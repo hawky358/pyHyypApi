@@ -8,6 +8,7 @@ from .constants import EventNumber
 if TYPE_CHECKING:
     from .client import HyypClient
 
+_last_notification_check_timestamp = 0
 
 class HyypAlarmInfos:
     """Initialize Hyyp alarm objects."""
