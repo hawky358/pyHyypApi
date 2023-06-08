@@ -46,8 +46,33 @@ class HyypAlarmInfos:
         return _response
 
 
+
+    def _new_notifications(self, site_id: int) -> Any:
+
+        global _last_notification_check_timestamp   
+        _response = []
+
+        _notifications = self._client.site_notifications(
+            site_id=site_id)
+                
+        _current_timestamp = round(datetime.now().timestamp())
+            
+        for x in _notifications:
+            
+            _notification_timestamp = round(x['timestamp']/1000)
+            if _current_timestamp - _notification_timestamp > 120:
+                continue
+            if _notification_timestamp <= (_last_notification_check_timestamp-30):
+                continue
+            _response.append(x)
+        
+        _last_notification_check_timestamp = _current_timestamp
+ 
+        return _response
+
+
     def _triggered_zones(self, site_id: int) -> Any:
-                         
+           
         triggeredZoneIds = []
         _new_notifications = self._new_notifications(site_id=site_id)
         
@@ -59,6 +84,8 @@ class HyypAlarmInfos:
         _response = triggeredZoneIds
         
         return _response
+     
+
      
     def _format_data(self) -> dict[Any, Any]:
         """Format data for Hass."""
@@ -81,6 +108,8 @@ class HyypAlarmInfos:
         }
         
         for site in site_ids:
+            
+            triggered_zones = self._triggered_zones(site_id=site)
 
             # Add last site notification.
             _last_notice = self._last_notice(site_id=site)
