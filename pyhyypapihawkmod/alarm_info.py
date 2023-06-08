@@ -45,6 +45,21 @@ class HyypAlarmInfos:
 
         return _response
 
+
+    def _triggered_zones(self, site_id: int) -> Any:
+                         
+        triggeredZoneIds = []
+        _new_notifications = self._new_notifications(site_id=site_id)
+        
+        for _notification in _new_notifications:
+            if _notification['eventNumber'] != 5:
+                continue
+            triggeredZoneIds.append(_notification['zoneId'])  
+                 
+        _response = triggeredZoneIds
+        
+        return _response
+     
     def _format_data(self) -> dict[Any, Any]:
         """Format data for Hass."""
 
@@ -105,6 +120,13 @@ class HyypAlarmInfos:
                     site_ids[site]["partitions"][partition]["zones"][zone][
                         "bypassed"
                     ] = bool(zone in self._state_info["bypassedZoneIds"])
+
+                # Add zone trigger info to zone (Zone triggered alarm).
+                for zone in site_ids[site]["partitions"][partition]["zones"]:
+                    site_ids[site]["partitions"][partition]["zones"][zone][
+                        "triggered"
+                    ] = bool(zone in triggered_zones)
+
 
                 # Add stay profile info.
                 site_ids[site]["partitions"][partition]["stayProfiles"] = {
