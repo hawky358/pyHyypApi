@@ -73,10 +73,7 @@ class HyypAlarmInfos:
 
 
     def _triggered_zones(self, site_id: int) -> Any:
-           
-       #### I still need to limit the zones per site#### <<<>>>><<<>>>< so that multiple sites are possible.
-        ### currenlty it doesn't iterate zones per site
-                
+                         
         triggeredZoneIds = []
         _new_notifications = self._new_notifications(site_id=site_id)
         
@@ -135,7 +132,7 @@ class HyypAlarmInfos:
                         "bypassed"
                     ] = bool(zone in self._state_info["bypassedZoneIds"])
 
-                # Add zone trigger info to zone.
+                # Add zone trigger info to zone (Zone triggered alarm).
                 for zone in site_ids[site]["partitions"][partition]["zones"]:
                     site_ids[site]["partitions"][partition]["zones"][zone][
                         "triggered"
