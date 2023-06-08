@@ -29,6 +29,7 @@ API_ENDPOINT_SET_ZONE_BYPASS = "/device/bypass"
 API_ENDPOINT_GET_CAMERA_BY_PARTITION = "/device/getCameraByPartition"
 API_ENDPOINT_UPDATE_SUB_USER = "/user/updateSubUser"
 API_ENDPOINT_SET_NOTIFICATION_SUBSCRIPTIONS = "/user/setNotificationSubscriptionsNew"
+API_ENDPOINT_TRIGGER_AUTOMATION = "/device/trigger"
 
 
 class HyypClient:
@@ -745,6 +746,55 @@ class HyypClient:
             raise HyypApiError(f"Trigger alarm failed: {_json_result['error']}")
 
         return _json_result
+
+
+    def trigger_automation(
+        self,
+        site_id: int,
+        trigger_id: int | None = None,
+        pin: int | None = None,
+    ) -> Any:
+        """Trigger Alarm via API."""
+
+        _params: dict[Any, Any] = STD_PARAMS.copy()
+        _params["pin"] = pin
+        _params["siteId"] = site_id
+        _params["triggerId"] = trigger_id
+        del _params["imei"]
+        _params["clientImei"] = STD_PARAMS["imei"]
+
+        try:
+            req = self._session.post(
+                "https://" + BASE_URL + API_ENDPOINT_TRIGGER_AUTOMATION,
+                allow_redirects=False,
+                params=_params,
+                timeout=self._timeout,
+            )
+
+            req.raise_for_status()
+
+        except requests.ConnectionError as err:
+            raise InvalidURL("A Invalid URL or Proxy error occured") from err
+
+        except requests.HTTPError as err:
+            raise HTTPError from err
+
+        try:
+            _json_result: dict[Any, Any] = req.json()
+
+        except ValueError as err:
+            raise HyypApiError(
+                "Impossible to decode response: "
+                + str(err)
+                + "\nResponse was: "
+                + str(req.text)
+            ) from err
+
+        if _json_result["status"] != "SUCCESS" and _json_result["error"] is not None:
+            raise HyypApiError(f"Trigger automation failed: {_json_result['error']}")
+
+        return _json_result
+
 
     def set_zone_bypass(
         self,

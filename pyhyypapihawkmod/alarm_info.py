@@ -8,7 +8,6 @@ from .constants import EventNumber
 if TYPE_CHECKING:
     from .client import HyypClient
 
-_last_notification_check_timestamp = 0
 
 class HyypAlarmInfos:
     """Initialize Hyyp alarm objects."""
@@ -41,34 +40,9 @@ class HyypAlarmInfos:
 
             _response = {
                 "lastNoticeTime": _last_event_datetime,
-                "lastNoticeName": EventNumber[str(_last_event)], 
-            }                                                    
+                "lastNoticeName": EventNumber[str(_last_event)],
+            }
 
-        return _response
-
-
-
-    def _new_notifications(self, site_id: int) -> Any:
-
-        global _last_notification_check_timestamp   
-        _response = []
-
-        _notifications = self._client.site_notifications(
-            site_id=site_id)
-                
-        _current_timestamp = round(datetime.now().timestamp())
-            
-        for x in _notifications:
-            
-            _notification_timestamp = round(x['timestamp']/1000)
-            if _current_timestamp - _notification_timestamp > 120:
-                continue
-            if _notification_timestamp <= (_last_notification_check_timestamp-30):
-                continue
-            _response.append(x)
-        
-        _last_notification_check_timestamp = _current_timestamp
- 
         return _response
 
 
@@ -102,16 +76,28 @@ class HyypAlarmInfos:
             partition["id"]: partition for partition in self._sync_info["partitions"]
         }
         
+        trigger_ids = {
+            trigger["id"]: trigger for trigger in self._sync_info["triggers"]
+        }
         
         for site in site_ids:
-            
-            triggered_zones = self._triggered_zones(site_id=site)
-            
+
             # Add last site notification.
             _last_notice = self._last_notice(site_id=site)
             site_ids[site]["lastNoticeTime"] = _last_notice["lastNoticeTime"]
             site_ids[site]["lastNoticeName"] = _last_notice["lastNoticeName"]
 
+            # Add triggers (PGM / Automations in APP)
+            for trigger_id in trigger_ids:
+                if trigger_id not in site_ids[site]["triggerIds"]:
+                    continue
+                else:
+                    site_ids[site]["triggers"] = {
+                        key: value
+                        for (key, value) in trigger_ids.items()            
+                    }
+                
+            
             # Add partition info.
             site_ids[site]["partitions"] = {
                 partition_id: partition_ids[partition_id]
@@ -120,11 +106,14 @@ class HyypAlarmInfos:
 
             for partition in partition_ids:
                 # Add zone info to partition.
-                site_ids[site]["partitions"][partition]["zones"] = {
-                    key: value
-                    for (key, value) in zone_ids.items()
-                    if key in site_ids[site]["partitions"][partition]["zoneIds"]
-                }
+                if partition not in site_ids[site]["partitions"]:
+                    continue
+                else:  
+                    site_ids[site]["partitions"][partition]["zones"] = {
+                        key: value
+                        for (key, value) in zone_ids.items()
+                        if key in site_ids[site]["partitions"][partition]["zoneIds"]
+                    }
 
                 # Add zone bypass info to zone.
                 for zone in site_ids[site]["partitions"][partition]["zones"]:
@@ -137,6 +126,7 @@ class HyypAlarmInfos:
                     site_ids[site]["partitions"][partition]["zones"][zone][
                         "triggered"
                     ] = bool(zone in triggered_zones)
+
 
                 # Add stay profile info.
                 site_ids[site]["partitions"][partition]["stayProfiles"] = {
@@ -151,9 +141,14 @@ class HyypAlarmInfos:
                 )
 
                 # Add partition stay_armed status.
+                site_ids[site]["partitions"][partition]["stayArmed"] = False
+                
                 for stay_profile in site_ids[site]["partitions"][partition][
                     "stayProfiles"
                 ]:
+                    if stay_profile not in self._state_info["armedStayProfileIds"]:
+                        continue
+                    
                     site_ids[site]["partitions"][partition]["stayArmed"] = bool(
                         stay_profile in self._state_info["armedStayProfileIds"]
                     )
