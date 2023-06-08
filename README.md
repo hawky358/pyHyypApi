@@ -49,6 +49,10 @@ TO Do:
 
 Changelog 
 
+1.1.0
+- Added feature to detect which zones triggered an alarm.
+
+
 1.0.3
 - Fixed a bug where stay profiles would mostly go to false even though stay profiles were armed.
 
