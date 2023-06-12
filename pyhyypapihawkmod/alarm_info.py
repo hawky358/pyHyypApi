@@ -18,20 +18,24 @@ class HyypAlarmInfos:
         self._client = client
         self._sync_info: dict = {}
         self._state_info: dict = {}
+        self._notifications: dict = {}
 
     def _fetch_data(self) -> None:
         """Fetch data via client api."""
         self._sync_info = self._client.get_sync_info()
         self._state_info = self._client.get_state_info()
+        
+    def _fetch_notifications(self, site_id: int) -> dict[Any,Any]:
+        """Fetch and cache site notifications."""
+        self._notifications = self._client.site_notifications(site_id=site_id)
 
-    def _last_notice(self, site_id: int) -> dict[Any, Any]:
+
+    def _last_notice(self) -> dict[Any, Any]:
         """Get last notification."""
         _response: dict[Any, Any] = {"lastNoticeTime": None, "lastNoticeName": None}
 
-        _last_notification = self._client.site_notifications(
-            site_id=site_id, json_key=0
-        )
-
+        _last_notification = self._notifications[0]
+        
         if _last_notification:
 
             _last_event = _last_notification["eventNumber"]
@@ -48,13 +52,12 @@ class HyypAlarmInfos:
 
 
 
-    def _new_notifications(self, site_id: int) -> Any:
+    def _new_notifications(self) -> Any:
 
         global _last_notification_check_timestamp   
         _response = []
 
-        _notifications = self._client.site_notifications(
-            site_id=site_id)
+        _notifications = self._notifications
                 
         _current_timestamp = round(datetime.now().timestamp())
             
@@ -72,10 +75,10 @@ class HyypAlarmInfos:
         return _response
 
 
-    def _triggered_zones(self, site_id: int) -> Any:
+    def _triggered_zones(self) -> Any:
            
         triggeredZoneIds = []
-        _new_notifications = self._new_notifications(site_id=site_id)
+        _new_notifications = self._new_notifications()
         
         for _notification in _new_notifications:
             if _notification['eventNumber'] != 5:
@@ -110,10 +113,11 @@ class HyypAlarmInfos:
         
         for site in site_ids:
             
+            self._fetch_notifications(site_id=site)
             triggered_zones = self._triggered_zones(site_id=site)
 
             # Add last site notification.
-            _last_notice = self._last_notice(site_id=site)
+            _last_notice = self._last_notice()
             site_ids[site]["lastNoticeTime"] = _last_notice["lastNoticeTime"]
             site_ids[site]["lastNoticeName"] = _last_notice["lastNoticeName"]
 

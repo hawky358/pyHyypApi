@@ -49,6 +49,12 @@ TO Do:
 
 Changelog 
 
+1.1.2
+- Changed the way notifications are cached
+
+1.1.1
+- Bugfix: Missing variable to timeout
+
 1.1.0
 - Added feature to detect which zones triggered an alarm.
 
