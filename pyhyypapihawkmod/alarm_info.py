@@ -8,7 +8,7 @@ from .constants import EventNumber
 if TYPE_CHECKING:
     from .client import HyypClient
 
-_last_notification_check_timestamp = 0
+
 
 class HyypAlarmInfos:
     """Initialize Hyyp alarm objects."""
@@ -19,6 +19,7 @@ class HyypAlarmInfos:
         self._sync_info: dict = {}
         self._state_info: dict = {}
         self._notifications: dict = {}
+        self._last_notification_check_timestamp = 0
 
     def _fetch_data(self) -> None:
         """Fetch data via client api."""
@@ -54,7 +55,7 @@ class HyypAlarmInfos:
 
     def _new_notifications(self) -> Any:
 
-        global _last_notification_check_timestamp   
+        _last_notification_check_timestamp = self._last_notification_check_timestamp   
         _response = []
 
         _notifications = self._notifications
@@ -70,7 +71,7 @@ class HyypAlarmInfos:
                 continue
             _response.append(x)
         
-        _last_notification_check_timestamp = _current_timestamp
+        self._last_notification_check_timestamp = _current_timestamp
  
         return _response
 
