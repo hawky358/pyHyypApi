@@ -115,7 +115,7 @@ class HyypAlarmInfos:
         for site in site_ids:
             
             self._fetch_notifications(site_id=site)
-            triggered_zones = self._triggered_zones(site_id=site)
+            triggered_zones = self._triggered_zones()
 
             # Add last site notification.
             _last_notice = self._last_notice()

@@ -49,6 +49,9 @@ TO Do:
 
 Changelog 
 
+1.1.3
+- Fixes a bug when calling notifications
+
 1.1.2
 - Changed the way notifications are cached
 - Changed the last notification timestamp from a global variable to a class variable
