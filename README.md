@@ -51,6 +51,7 @@ Changelog
 
 1.1.2
 - Changed the way notifications are cached
+- Changed the last notification timestamp from a global variable to a class variable
 
 1.1.1
 - Bugfix: Missing variable to timeout
