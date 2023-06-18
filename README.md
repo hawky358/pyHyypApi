@@ -49,8 +49,11 @@ TO Do:
 
 Changelog 
 
+1.1.4
+- Bugfix: When no "triggers" exist a blank key is now returned instead of nothing. This caused a KeyError in home assistant.
+
 1.1.3
-- Fixes a bug when calling notifications
+- Bugfix: Fixes a bug when calling notifications
 
 1.1.2
 - Changed the way notifications are cached

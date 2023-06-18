@@ -123,6 +123,7 @@ class HyypAlarmInfos:
             site_ids[site]["lastNoticeName"] = _last_notice["lastNoticeName"]
 
             # Add triggers (PGM / Automations in APP)
+            site_ids[site]["triggers"] = {}
             for trigger_id in trigger_ids:
                 if trigger_id not in site_ids[site]["triggerIds"]:
                     continue
