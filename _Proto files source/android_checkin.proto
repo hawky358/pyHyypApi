@@ -1,0 +1,64 @@
+syntax = "proto2";
+
+package checkin_proto;
+
+message ChromeBuildProto {
+	optional .checkin_proto.ChromeBuildProto.Platform platform = 1;
+	optional string chrome_version = 2;
+	optional .checkin_proto.ChromeBuildProto.Channel channel = 3;
+
+	enum Platform {
+
+		PLATFORM_WIN = 1;
+		PLATFORM_MAC = 2;
+		PLATFORM_LINUX = 3;
+		PLATFORM_CROS = 4;
+		PLATFORM_IOS = 5;
+		PLATFORM_ANDROID = 6;
+
+	}
+
+
+	enum Channel {
+
+		CHANNEL_STABLE = 1;
+		CHANNEL_BETA = 2;
+		CHANNEL_DEV = 3;
+		CHANNEL_CANARY = 4;
+		CHANNEL_UNKNOWN = 5;
+
+	}
+
+
+}
+
+   
+  
+  
+  
+message AndroidCheckinProto {
+
+	optional int64 last_checkin_msec = 2;
+	optional string cell_operator = 6;
+	optional string sim_operator = 7;
+	optional string roaming = 8;
+	optional int32 user_number = 9;
+	optional .checkin_proto.DeviceType type = 12 [default = DEVICE_ANDROID_OS];
+	optional .checkin_proto.ChromeBuildProto chrome_build = 13;
+
+}
+
+
+enum DeviceType {
+
+	DEVICE_ANDROID_OS = 1;
+	DEVICE_IOS_OS = 2;
+	DEVICE_CHROME_BROWSER = 3;
+	DEVICE_CHROME_OS = 4;
+	
+}
+  
+  
+option optimize_for = LITE_RUNTIME; 
+  
+  
