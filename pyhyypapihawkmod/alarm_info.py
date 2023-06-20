@@ -205,3 +205,19 @@ class HyypAlarmInfos:
         formatted_data: dict[Any, Any] = self._format_data()
 
         return formatted_data
+
+
+
+    def debug_notifications(self) -> dict[Any, Any]:
+        """Pull notifications for debug purposes."""
+        # The API returns data from site level.
+
+        self._fetch_data()
+        site_ids = {site["id"]: site for site in self._sync_info["sites"]}
+        
+        for site in site_ids:
+            self._fetch_notifications(site_id=site)
+            site_ids[site] = self._notifications
+
+
+        return site_ids

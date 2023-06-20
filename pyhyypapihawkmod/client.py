@@ -138,6 +138,10 @@ class HyypClient:
 
         return HyypAlarmInfos(self).status()
 
+    def get_debug_notifications(self) -> dict[Any, Any]:
+        """Get alarm infos formatted for hass infos."""
+        return HyypAlarmInfos(self).debug_notifications()
+
     def site_notifications(
         self, site_id: int, timestamp: int | None = None, json_key: int | None = None
     ) -> Any:
