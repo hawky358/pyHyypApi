@@ -50,7 +50,7 @@ TO Do:
 Changelog 
 
 1.1.5
-- Added functions to supply notifications for debugging
+- Added functions to supply notifications for debugging when specifically called.
 
 1.1.4
 - Bugfix: When no "triggers" exist a blank key is now returned instead of nothing. This caused a KeyError in home assistant.
