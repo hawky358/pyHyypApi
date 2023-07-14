@@ -40,13 +40,6 @@ print(json.dumps(client.get_sync_info(),indent=2))
 
 ```
 
-TO Do:
-
-- CLI usage. (GCF client is there, just needs some more automation.)
-- Capture panic api...for obvious reasons.
-- What zone caused arm/arm stay not to work. - Looks like GCM/Firebase push messages. Added GCM client...just run main program and register GCF code in function called register gcf. It works.
-
-
 Changelog 
 
 1.1.5
