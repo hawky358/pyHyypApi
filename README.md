@@ -42,6 +42,10 @@ print(json.dumps(client.get_sync_info(),indent=2))
 
 Changelog 
 
+1.1.6-b1
+- Test version
+- Will now show zones as bypassed when a stay arm bypassing zones is activated.
+
 1.1.5
 - Added functions to supply notifications for debugging when specifically called.
 

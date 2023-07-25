@@ -758,7 +758,7 @@ class HyypClient:
         trigger_id: int | None = None,
         pin: int | None = None,
     ) -> Any:
-        """Trigger Alarm via API."""
+        """Trigger Automation via API."""
 
         _params: dict[Any, Any] = STD_PARAMS.copy()
         _params["pin"] = pin

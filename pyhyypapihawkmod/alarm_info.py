@@ -179,22 +179,26 @@ class HyypAlarmInfos:
                 # Add partition stay_armed status.
                 site_ids[site]["partitions"][partition]["stayArmed"] = False
                 
-                for stay_profile in site_ids[site]["partitions"][partition][
-                    "stayProfiles"
-                ]:
+                for stay_profile in site_ids[site]["partitions"][partition]["stayProfiles"]:
                     if stay_profile not in self._state_info["armedStayProfileIds"]:
                         continue
                     
                     site_ids[site]["partitions"][partition]["stayArmed"] = bool(
                         stay_profile in self._state_info["armedStayProfileIds"]
                     )
+                    
                     site_ids[site]["partitions"][partition]["stayArmedProfileName"] = (
                         site_ids[site]["partitions"][partition]["stayProfiles"][
-                            stay_profile
-                        ]["name"]
-                        if stay_profile in self._state_info["armedStayProfileIds"]
-                        else None
+                            stay_profile]["name"]
                     )
+                    
+                    # Show zone as bypassed if stay partition has it bypassed                 
+                    for zone in site_ids[site]["partitions"][partition]["zones"]:
+                        site_ids[site]["partitions"][partition]["zones"][zone][
+                        "bypassed"
+                        ] = bool(zone in site_ids[site]["partitions"][partition][
+                        "stayProfiles"][stay_profile]['zoneIds'])
+
 
         return site_ids
 
