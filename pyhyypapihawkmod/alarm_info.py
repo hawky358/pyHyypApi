@@ -25,6 +25,7 @@ class HyypAlarmInfos:
         """Fetch data via client api."""
         self._sync_info = self._client.get_sync_info()
         self._state_info = self._client.get_state_info()
+
         
     def _fetch_notifications(self, site_id: int) -> dict[Any,Any]:
         """Fetch and cache site notifications."""
@@ -116,6 +117,7 @@ class HyypAlarmInfos:
             
             self._fetch_notifications(site_id=site)
             triggered_zones = self._triggered_zones()
+            zone_states = self._client.get_zone_state_info(site_id=site)
 
             # Add last site notification.
             _last_notice = self._last_notice()
@@ -157,6 +159,24 @@ class HyypAlarmInfos:
                         "bypassed"
                     ] = bool(zone in self._state_info["bypassedZoneIds"])
 
+
+
+                # New zone information from IDS servers
+                
+                # add zone bypass info to zone
+                for zone in site_ids[site]["partitions"][partition]["zones"]:
+                    for zone_state in zone_states["zones"]:
+                        if site_ids[site]["partitions"][partition]["zones"][zone][
+                            "number"] != zone_state["number"]:
+                            continue
+                        site_ids[site]["partitions"][partition]["zones"][zone][
+                            "bypassed"] = bool(zone_state["bypassed"])
+                        site_ids[site]["partitions"][partition]["zones"][zone][
+                            "openviolated"] = bool(zone_state["openViolated"])
+                        site_ids[site]["partitions"][partition]["zones"][zone][
+                            "tampered"] = bool(zone_state["tampered"])
+
+
                 # Add zone trigger info to zone (Zone triggered alarm).
                 for zone in site_ids[site]["partitions"][partition]["zones"]:
                     site_ids[site]["partitions"][partition]["zones"][zone][
@@ -194,11 +214,12 @@ class HyypAlarmInfos:
                     
                     # Show zone as bypassed if stay partition has it bypassed                 
                     for zone in site_ids[site]["partitions"][partition]["zones"]:
+                        bypassed_due_to_stay = zone in site_ids[site]["partitions"][partition]["stayProfiles"][stay_profile]['zoneIds']
+                        site_ids[site]["partitions"][partition]["zones"][zone]["stay_bypassed"] = bypassed_due_to_stay
                         site_ids[site]["partitions"][partition]["zones"][zone][
                         "bypassed"
-                        ] = bool(site_ids[site]["partitions"][partition]["zones"][zone]["bypassed"] or 
-                                 zone in site_ids[site]["partitions"][partition]["stayProfiles"][stay_profile]['zoneIds']
-                                 )
+                        ] = bool(site_ids[site]["partitions"][partition]["zones"][zone]["bypassed"] or bypassed_due_to_stay)
+                        
 
         return site_ids
 

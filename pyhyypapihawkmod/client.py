@@ -30,6 +30,7 @@ API_ENDPOINT_GET_CAMERA_BY_PARTITION = "/device/getCameraByPartition"
 API_ENDPOINT_UPDATE_SUB_USER = "/user/updateSubUser"
 API_ENDPOINT_SET_NOTIFICATION_SUBSCRIPTIONS = "/user/setNotificationSubscriptionsNew"
 API_ENDPOINT_TRIGGER_AUTOMATION = "/device/trigger"
+API_ENDPOINT_GET_ZONE_STATE_INFO = "/device/getZoneStateInfo"
 
 
 class HyypClient:
@@ -40,6 +41,7 @@ class HyypClient:
         email: str | None = None,
         password: str | None = None,
         pkg: str = HyypPkg.ADT_SECURE_HOME.value,
+        userid: int | None = None,
         timeout: int = DEFAULT_TIMEOUT,
         token: str | None = None,
     ) -> None:
@@ -50,6 +52,7 @@ class HyypClient:
         self._session.headers.update(REQUEST_HEADER)
         STD_PARAMS["pkg"] = pkg
         STD_PARAMS["token"] = token
+        STD_PARAMS["userId"] = userid
         self._timeout = timeout
 
     def login(self) -> Any:
@@ -90,6 +93,7 @@ class HyypClient:
             raise HyypApiError(f"Login error: {_json_result['error']}")
 
         STD_PARAMS["token"] = _json_result["token"]
+        STD_PARAMS["userId"] = _json_result["user"]["id"]
 
         return _json_result
 
@@ -285,6 +289,54 @@ class HyypClient:
             return _json_result
 
         return _json_result[json_key]
+
+
+
+    def get_zone_state_info(self, site_id: int, json_key: str | None = None) -> Any:
+        """Get state info from API. Returns armed, bypassed partition ids."""
+
+        _params: dict[str, Any] = STD_PARAMS.copy()
+        _params["siteId"] = site_id
+
+        try:
+            req = self._session.get(
+                "https://" + BASE_URL + API_ENDPOINT_GET_ZONE_STATE_INFO,
+                allow_redirects=False,
+                params=_params,
+                timeout=self._timeout,
+            )
+
+            req.raise_for_status()
+
+        except requests.ConnectionError as err:
+            raise InvalidURL("A Invalid URL or Proxy error occured") from err
+
+        except requests.HTTPError as err:
+            raise HTTPError from err
+
+        try:
+            _json_result: dict[Any, Any] = req.json()
+
+        except ValueError as err:
+            raise HyypApiError(
+                "Impossible to decode response: "
+                + str(err)
+                + "\nResponse was: "
+                + str(req.text)
+            ) from err
+
+        if _json_result["status"] != "SUCCESS" and _json_result["error"] is not None:
+            raise HyypApiError(
+                f"Error getting zone state info from api: {_json_result['error']}"
+            )
+
+        if json_key is None:
+            return _json_result
+
+        return _json_result[json_key]
+
+
+
 
     def get_sync_info(self, json_key: str | None = None) -> Any:
         """Get user, site, partition and users info from API."""
