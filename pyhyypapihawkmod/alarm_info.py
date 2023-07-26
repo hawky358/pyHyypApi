@@ -36,6 +36,9 @@ class HyypAlarmInfos:
         """Get last notification."""
         _response: dict[Any, Any] = {"lastNoticeTime": None, "lastNoticeName": None}
 
+        if len(self._notifications) == 0:
+            return _response
+        
         _last_notification = self._notifications[0]
         
         if _last_notification:
