@@ -196,9 +196,9 @@ class HyypAlarmInfos:
                     for zone in site_ids[site]["partitions"][partition]["zones"]:
                         site_ids[site]["partitions"][partition]["zones"][zone][
                         "bypassed"
-                        ] = bool(zone in site_ids[site]["partitions"][partition][
-                        "stayProfiles"][stay_profile]['zoneIds'])
-
+                        ] = bool(site_ids[site]["partitions"][partition]["zones"][zone]["bypassed"] or 
+                                 zone in site_ids[site]["partitions"][partition]["stayProfiles"][stay_profile]['zoneIds']
+                                 )
 
         return site_ids
 
