@@ -41,9 +41,9 @@ class HyypClient:
         email: str | None = None,
         password: str | None = None,
         pkg: str = HyypPkg.ADT_SECURE_HOME.value,
-        userid: int | None = None,
         timeout: int = DEFAULT_TIMEOUT,
         token: str | None = None,
+        userid: str | None = None,
     ) -> None:
         """Initialize the client object."""
         self._email = email

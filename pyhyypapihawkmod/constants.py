@@ -16,6 +16,7 @@ STD_PARAMS = {
     "pkg": "za.co.adt.securehome.android",
     "_appVersionName": "3.5.19",
     "token": None,
+    "userId": None,
 }  # Standard request parameters.
 
 # Rpc to name mapping. Used in push notifications.
