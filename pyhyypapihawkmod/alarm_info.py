@@ -29,7 +29,7 @@ class HyypAlarmInfos:
 
     def _fetch_data(self) -> None:
         """Fetch data via client api."""
-        time.sleep(SLEEP_DELAY)
+        #time.sleep(SLEEP_DELAY)
         self._sync_info = self._client.get_sync_info()
         time.sleep(SLEEP_DELAY)
         self._state_info = self._client.get_state_info()

@@ -42,6 +42,9 @@ print(json.dumps(client.get_sync_info(),indent=2))
 
 Changelog 
 
+1.1.7b2
+- Removed one sleep delay for slightly better response
+
 1.1.7b1
 
 - Zones now show openviolated and tampered information from IDS server
