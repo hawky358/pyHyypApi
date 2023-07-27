@@ -43,7 +43,7 @@ class HyypClient:
         pkg: str = HyypPkg.ADT_SECURE_HOME.value,
         timeout: int = DEFAULT_TIMEOUT,
         token: str | None = None,
-        userid: str | None = None,
+        userid: int | None = None,
     ) -> None:
         """Initialize the client object."""
         self._email = email
@@ -909,3 +909,7 @@ class HyypClient:
 
         self._session = requests.session()
         self._session.headers.update(REQUEST_HEADER)  # Reset session.
+        
+        
+        
+        

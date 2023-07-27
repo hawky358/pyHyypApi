@@ -3,7 +3,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 from datetime import datetime
-from .constants import EventNumber
+import time
+from .constants import EventNumber, STD_PARAMS
 import logging
 
 _LOGGER = logging.getLogger(__name__)
@@ -12,7 +13,7 @@ _LOGGER = logging.getLogger(__name__)
 if TYPE_CHECKING:
     from .client import HyypClient
 
-
+SLEEP_DELAY = 0.5
 
 class HyypAlarmInfos:
     """Initialize Hyyp alarm objects."""
@@ -23,12 +24,32 @@ class HyypAlarmInfos:
         self._sync_info: dict = {}
         self._state_info: dict = {}
         self._notifications: dict = {}
+        self._zone_state_info = []
         self._last_notification_check_timestamp = 0
 
     def _fetch_data(self) -> None:
         """Fetch data via client api."""
+        time.sleep(SLEEP_DELAY)
         self._sync_info = self._client.get_sync_info()
+        time.sleep(SLEEP_DELAY)
         self._state_info = self._client.get_state_info()
+        self._zone_state_info.clear()
+        for site in self._sync_info["sites"]:
+            siteid = site["id"]
+            time.sleep(SLEEP_DELAY)
+            entry = {siteid : self._client.get_zone_state_info(site_id=siteid)}
+            self._zone_state_info.append(entry)
+
+            
+        
+    def get_zone_state_info_for_site(self, site):
+        current_siteinfo = {}
+        for siteinfo in self._zone_state_info:
+            if site not in siteinfo:
+                continue
+            current_siteinfo = siteinfo[site]
+        return current_siteinfo
+            
 
         
     def _fetch_notifications(self, site_id: int) -> dict[Any,Any]:
@@ -124,11 +145,12 @@ class HyypAlarmInfos:
             
             self._fetch_notifications(site_id=site)
             triggered_zones = self._triggered_zones()
-            #zone_states = self._client.get_zone_state_info(site_id=site)
+            zone_states = self.get_zone_state_info_for_site(site=site)
 
 
             # Add last site notification.
             _last_notice = self._last_notice()
+            site_ids[site]["update"] = str(datetime.fromtimestamp(time.time()))
             site_ids[site]["lastNoticeTime"] = _last_notice["lastNoticeTime"]
             site_ids[site]["lastNoticeName"] = _last_notice["lastNoticeName"]
 
@@ -170,8 +192,6 @@ class HyypAlarmInfos:
 
 
                 # New zone information from IDS servers
-                """
-                # add zone bypass info to zone
                 for zone in site_ids[site]["partitions"][partition]["zones"]:
                     for zone_state in zone_states["zones"]:
                         if site_ids[site]["partitions"][partition]["zones"][zone][
@@ -183,7 +203,8 @@ class HyypAlarmInfos:
                             "openviolated"] = bool(zone_state["openViolated"])
                         site_ids[site]["partitions"][partition]["zones"][zone][
                             "tampered"] = bool(zone_state["tampered"])
-                """
+                        site_ids[site]["partitions"][partition]["zones"][zone][
+                            "stay_bypassed"] = False
 
                 # Add zone trigger info to zone (Zone triggered alarm).
                 for zone in site_ids[site]["partitions"][partition]["zones"]:
@@ -245,6 +266,7 @@ class HyypAlarmInfos:
         """Pull notifications for debug purposes."""
         # The API returns data from site level.
 
+        """
         self._fetch_data()
         site_ids = {site["id"]: site for site in self._sync_info["sites"]}
         
@@ -254,3 +276,15 @@ class HyypAlarmInfos:
 
 
         return site_ids
+        """
+
+
+        self._fetch_data()
+        fb = self.get_zone_state_info_for_site(108781)
+        message = {"rand" : "1147",
+                    "raw" : self._zone_state_info,
+                   "forsite" : fb
+                    }
+        
+        
+        return fb
