@@ -42,6 +42,9 @@ print(json.dumps(client.get_sync_info(),indent=2))
 
 Changelog 
 
+1.1.7b3
+- Revert 1.1.7b2
+
 1.1.7b2
 - Removed one sleep delay for slightly better response
 
