@@ -284,7 +284,6 @@ class HyypClient:
             raise HyypApiError(
                 f"Error getting partition cameras from api: {_json_result['error']}"
             )
-
         if json_key is None:
             return _json_result
 
@@ -297,7 +296,7 @@ class HyypClient:
 
         _params: dict[str, Any] = STD_PARAMS.copy()
         _params["siteId"] = site_id
-
+        
         try:
             req = self._session.get(
                 "https://" + BASE_URL + API_ENDPOINT_GET_ZONE_STATE_INFO,
@@ -307,13 +306,11 @@ class HyypClient:
             )
 
             req.raise_for_status()
-
         except requests.ConnectionError as err:
             raise InvalidURL("A Invalid URL or Proxy error occured") from err
 
         except requests.HTTPError as err:
-            raise HTTPError from err
-
+            raise HTTPError from err    
         try:
             _json_result: dict[Any, Any] = req.json()
 

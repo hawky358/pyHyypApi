@@ -4,6 +4,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 from datetime import datetime
 from .constants import EventNumber
+import logging
+
+_LOGGER = logging.getLogger(__name__)
+
 
 if TYPE_CHECKING:
     from .client import HyypClient
@@ -120,7 +124,8 @@ class HyypAlarmInfos:
             
             self._fetch_notifications(site_id=site)
             triggered_zones = self._triggered_zones()
-            zone_states = self._client.get_zone_state_info(site_id=site)
+            #zone_states = self._client.get_zone_state_info(site_id=site)
+
 
             # Add last site notification.
             _last_notice = self._last_notice()
@@ -165,7 +170,7 @@ class HyypAlarmInfos:
 
 
                 # New zone information from IDS servers
-                
+                """
                 # add zone bypass info to zone
                 for zone in site_ids[site]["partitions"][partition]["zones"]:
                     for zone_state in zone_states["zones"]:
@@ -178,7 +183,7 @@ class HyypAlarmInfos:
                             "openviolated"] = bool(zone_state["openViolated"])
                         site_ids[site]["partitions"][partition]["zones"][zone][
                             "tampered"] = bool(zone_state["tampered"])
-
+                """
 
                 # Add zone trigger info to zone (Zone triggered alarm).
                 for zone in site_ids[site]["partitions"][partition]["zones"]:
