@@ -304,7 +304,6 @@ class HyypClient:
                 params=_params,
                 timeout=self._timeout,
             )
-
             req.raise_for_status()
         except requests.ConnectionError as err:
             raise InvalidURL("A Invalid URL or Proxy error occured") from err
@@ -331,8 +330,6 @@ class HyypClient:
             return _json_result
 
         return _json_result[json_key]
-
-
 
 
     def get_sync_info(self, json_key: str | None = None) -> Any:
@@ -873,7 +870,6 @@ class HyypClient:
                 params=_params,
                 timeout=self._timeout,
             )
-
             req.raise_for_status()
 
         except requests.ConnectionError as err:
@@ -909,7 +905,3 @@ class HyypClient:
 
         self._session = requests.session()
         self._session.headers.update(REQUEST_HEADER)  # Reset session.
-        
-        
-        
-        

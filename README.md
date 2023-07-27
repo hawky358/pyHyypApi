@@ -42,8 +42,13 @@ print(json.dumps(client.get_sync_info(),indent=2))
 
 Changelog 
 
+1.1.7b1
+
+- Zones now show openviolated and tampered information from IDS server
+- Added delays between server requests to prevent blocking
+
 1.1.6-b3
-- Zones now show openviolated and tempered information from IDS server
+- Zones now show openviolated and tampered information from IDS server
 
 1.1.6-b1
 - Test version
