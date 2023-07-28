@@ -42,6 +42,9 @@ print(json.dumps(client.get_sync_info(),indent=2))
 
 Changelog 
 
+1.2.0b2
+- Added additional checks for openviolated and tampered information when not received
+
 1.2.0b1
 - Version bump for semantic versioning 
 

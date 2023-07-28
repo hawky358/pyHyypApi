@@ -13,7 +13,7 @@ _LOGGER = logging.getLogger(__name__)
 if TYPE_CHECKING:
     from .client import HyypClient
 
-SLEEP_DELAY = 0.5
+SLEEP_DELAY = 0.6
 
 class HyypAlarmInfos:
     """Initialize Hyyp alarm objects."""
@@ -43,13 +43,18 @@ class HyypAlarmInfos:
             
         
     def get_zone_state_info_for_site(self, site):
-        current_siteinfo = {}
+        current_siteinfo = None
         for siteinfo in self._zone_state_info:
-            if site not in siteinfo:
-                continue
-            current_siteinfo = siteinfo[site]
+            if site in siteinfo:
+                current_siteinfo = siteinfo[site]
+                if "status" not in current_siteinfo:
+                    return None
+                if current_siteinfo["status"] != "SUCCESS":
+                    return None
         return current_siteinfo
+    
             
+
 
         
     def _fetch_notifications(self, site_id: int) -> dict[Any,Any]:
@@ -147,7 +152,6 @@ class HyypAlarmInfos:
             triggered_zones = self._triggered_zones()
             zone_states = self.get_zone_state_info_for_site(site=site)
 
-
             # Add last site notification.
             _last_notice = self._last_notice()
             site_ids[site]["update"] = str(datetime.fromtimestamp(time.time()))
@@ -193,6 +197,10 @@ class HyypAlarmInfos:
 
                 # New zone information from IDS servers
                 for zone in site_ids[site]["partitions"][partition]["zones"]:
+                    if zone_states is None:
+                        continue
+                    if "zones" not in zone_states:
+                        continue
                     for zone_state in zone_states["zones"]:
                         if site_ids[site]["partitions"][partition]["zones"][zone][
                             "number"] != zone_state["number"]:
