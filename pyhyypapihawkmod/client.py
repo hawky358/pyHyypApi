@@ -142,9 +142,9 @@ class HyypClient:
 
         return HyypAlarmInfos(self).status()
 
-    def get_debug_notifications(self) -> dict[Any, Any]:
+    def get_debug_infos(self) -> dict[Any, Any]:
         """Get alarm infos formatted for hass infos."""
-        return HyypAlarmInfos(self).debug_notifications()
+        return HyypAlarmInfos(self).get_debug_info()
 
     def site_notifications(
         self, site_id: int, timestamp: int | None = None, json_key: int | None = None
@@ -322,6 +322,7 @@ class HyypClient:
             ) from err
 
         if _json_result["status"] != "SUCCESS" and _json_result["error"] is not None:
+            _LOGGER.warning(f"Error getting zone state info from api: {_json_result['error']}")
             raise HyypApiError(
                 f"Error getting zone state info from api: {_json_result['error']}"
             )

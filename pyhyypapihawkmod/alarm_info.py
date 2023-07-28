@@ -47,6 +47,8 @@ class HyypAlarmInfos:
         for siteinfo in self._zone_state_info:
             if site in siteinfo:
                 current_siteinfo = siteinfo[site]
+                if current_siteinfo is None:
+                    return None
                 if "status" not in current_siteinfo:
                     return None
                 if current_siteinfo["status"] != "SUCCESS":
@@ -270,29 +272,26 @@ class HyypAlarmInfos:
 
 
 
-    def debug_notifications(self) -> dict[Any, Any]:
+    def get_debug_info(self) -> dict[Any, Any]:
         """Pull notifications for debug purposes."""
         # The API returns data from site level.
 
-        """
-        self._fetch_data()
-        site_ids = {site["id"]: site for site in self._sync_info["sites"]}
+        time.sleep(1.5)
+        syncinfo = self._client.get_sync_info()
+        time.sleep(1)
+        stateinfo = self._client.get_state_info()
+        time.sleep(2)
+        site = syncinfo["sites"][0]["id"]
+        time.sleep(2)
+        notificationinfo = self._client.site_notifications(site_id=site)
+        time.sleep(2)
+        zoneinfo = self._client.get_zone_state_info(site_id=site)
         
-        for site in site_ids:
-            self._fetch_notifications(site_id=site)
-            site_ids[site] = self._notifications
-
-
-        return site_ids
-        """
-
-
-        self._fetch_data()
-        fb = self.get_zone_state_info_for_site(108781)
-        message = {"rand" : "1147",
-                    "raw" : self._zone_state_info,
-                   "forsite" : fb
+        message = {"Syncinfo" : syncinfo,
+                   "Stateinfo" : stateinfo,
+                   "notifications" : notificationinfo,
+                   "zoneinfo" : zoneinfo,
                     }
         
         
-        return fb
+        return message
