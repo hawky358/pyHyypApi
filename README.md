@@ -42,6 +42,10 @@ print(json.dumps(client.get_sync_info(),indent=2))
 
 Changelog 
 
+2.0.0b1
+- Changed API to "Push" mode instead of "Poll". API will now send to Home Assistant when data is ready instead of Home assistant Polling
+  - A "client.request_push()" method allows home assistant to request an earlier push
+
 1.1.7b3
 - Revert 1.1.7b2
 

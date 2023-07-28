@@ -29,7 +29,7 @@ class HyypAlarmInfos:
 
     def _fetch_data(self) -> None:
         """Fetch data via client api."""
-        time.sleep(SLEEP_DELAY)
+        #time.sleep(SLEEP_DELAY)
         self._sync_info = self._client.get_sync_info()
         time.sleep(SLEEP_DELAY)
         self._state_info = self._client.get_state_info()
@@ -193,6 +193,8 @@ class HyypAlarmInfos:
 
                 # New zone information from IDS servers
                 for zone in site_ids[site]["partitions"][partition]["zones"]:
+                    if ("zones" not in zone_states) or (zone_states is None):
+                        continue
                     for zone_state in zone_states["zones"]:
                         if site_ids[site]["partitions"][partition]["zones"][zone][
                             "number"] != zone_state["number"]:

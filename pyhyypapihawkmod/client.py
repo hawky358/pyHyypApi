@@ -5,9 +5,11 @@ import logging
 from typing import Any
 
 import requests
+import threading as thread
+import time
 
 from .alarm_info import HyypAlarmInfos
-from .constants import DEFAULT_TIMEOUT, REQUEST_HEADER, STD_PARAMS, HyypPkg
+from .constants import DEFAULT_TIMEOUT, REQUEST_HEADER, STD_PARAMS, PUSH_DELAY, HyypPkg
 from .exceptions import HTTPError, HyypApiError, InvalidURL
 
 _LOGGER = logging.getLogger(__name__)
@@ -54,6 +56,8 @@ class HyypClient:
         STD_PARAMS["token"] = token
         STD_PARAMS["userId"] = userid
         self._timeout = timeout
+        self.callback_function = None
+        self.time_to_push = PUSH_DELAY
 
     def login(self) -> Any:
         """Login to ADT Secure Home API."""
@@ -136,6 +140,27 @@ class HyypClient:
             )
 
         return _json_result
+
+    def push_timer(self):
+        SLEEP_DELAY = 0.2
+        while 1:
+            while self.time_to_push > 0:
+                time.sleep(SLEEP_DELAY)
+                self.time_to_push -= SLEEP_DELAY
+            alarminfo = self.load_alarm_infos()
+            self.callback_function(alarminfo)
+            self.time_to_push = PUSH_DELAY
+
+    def request_push(self):
+        REQUEST_PUSH_TIMEOUT = 1.5
+        self.time_to_push = REQUEST_PUSH_TIMEOUT
+        
+
+    def initialize_push_timer(self):
+        thread.Thread(target=self.push_timer).start()
+
+    def register_callback(self, callback_function):
+        self.callback_function = callback_function
 
     def load_alarm_infos(self) -> dict[Any, Any]:
         """Get alarm infos formatted for hass infos."""

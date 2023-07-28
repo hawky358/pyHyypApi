@@ -1,6 +1,7 @@
 """Hyyp API constants."""
 from enum import Enum
 
+PUSH_DELAY = 30
 DEFAULT_TIMEOUT = 25
 MAX_RETRIES = 3
 GCF_SENDER_ID = 87969245803
