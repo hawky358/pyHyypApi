@@ -275,7 +275,7 @@ class HyypAlarmInfos:
     def get_debug_info(self) -> dict[Any, Any]:
         """Pull notifications for debug purposes."""
         # The API returns data from site level.
-
+        _LOGGER.setLevel(logging.DEBUG)
         time.sleep(1.5)
         syncinfo = self._client.get_sync_info()
         time.sleep(1)
