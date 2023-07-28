@@ -293,5 +293,10 @@ class HyypAlarmInfos:
                    "zoneinfo" : zoneinfo,
                     }
         
+        _LOGGER.debug('------------------------------')
+        _LOGGER.debug('--------Start of debug--------')
         
-        return message
+        _LOGGER.debug(message)
+        
+        _LOGGER.debug('--------End of debug--------')
+        _LOGGER.debug('-----------------------------')
