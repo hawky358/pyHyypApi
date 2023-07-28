@@ -500,6 +500,7 @@ def run_example():
             cred_file.write(idstr)
         print("Notification: \n")
         print(json.dumps(notification, indent=2))
+        _LOGGER.warning(notification)
 
     with open(persistent_ids_path, "a+", encoding="UTF-8") as cred_file:
         received_persistent_ids = [x.strip() for x in cred_file]

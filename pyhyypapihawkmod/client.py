@@ -347,9 +347,10 @@ class HyypClient:
             ) from err
 
         if _json_result["status"] != "SUCCESS" and _json_result["error"] is not None:
-            raise HyypApiError(
-                f"Error getting zone state info from api: {_json_result['error']}"
-            )
+            _LOGGER.warning(f"Error getting zone state info from api: {_json_result['error']}")
+            #raise HyypApiError(
+            #    f"Error getting zone state info from api: {_json_result['error']}"
+            #)
 
         if json_key is None:
             return _json_result
