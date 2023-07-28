@@ -42,6 +42,9 @@ print(json.dumps(client.get_sync_info(),indent=2))
 
 Changelog 
 
+1.2.0b1
+- Version bump for semantic versioning 
+
 1.1.7b3
 - Revert 1.1.7b2
 
