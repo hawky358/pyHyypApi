@@ -6,6 +6,7 @@ from datetime import datetime
 import time
 from .constants import EventNumber, STD_PARAMS
 import logging
+import threading as thread
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -272,31 +273,41 @@ class HyypAlarmInfos:
 
 
 
+    def debug_thread(self):
+        while 1:
+        
+            _LOGGER.setLevel(logging.DEBUG)
+            time.sleep(1.5)
+            syncinfo = self._client.get_sync_info()
+            time.sleep(1)
+            stateinfo = self._client.get_state_info()
+            time.sleep(2)
+            site = syncinfo["sites"][0]["id"]
+            time.sleep(2)
+            notificationinfo = self._client.site_notifications(site_id=site)
+            time.sleep(2)
+            zoneinfo = self._client.get_zone_state_info(site_id=site)
+            
+            message = {"Syncinfo" : syncinfo,
+                    "Stateinfo" : stateinfo,
+                    "notifications" : notificationinfo,
+                    "zoneinfo" : zoneinfo,
+                        }
+            
+            _LOGGER.debug('------------------------------')
+            _LOGGER.debug('--------Start of debug--------')
+            
+            _LOGGER.debug(message)
+            
+            _LOGGER.debug('--------End of debug--------')
+            _LOGGER.debug('-----------------------------')
+            time.sleep(30)
+    
+
+
     def get_debug_info(self) -> dict[Any, Any]:
         """Pull notifications for debug purposes."""
         # The API returns data from site level.
-        _LOGGER.setLevel(logging.DEBUG)
-        time.sleep(1.5)
-        syncinfo = self._client.get_sync_info()
-        time.sleep(1)
-        stateinfo = self._client.get_state_info()
-        time.sleep(2)
-        site = syncinfo["sites"][0]["id"]
-        time.sleep(2)
-        notificationinfo = self._client.site_notifications(site_id=site)
-        time.sleep(2)
-        zoneinfo = self._client.get_zone_state_info(site_id=site)
+        thread.Thread(target=self.debug_thread).start()
         
-        message = {"Syncinfo" : syncinfo,
-                   "Stateinfo" : stateinfo,
-                   "notifications" : notificationinfo,
-                   "zoneinfo" : zoneinfo,
-                    }
-        
-        _LOGGER.debug('------------------------------')
-        _LOGGER.debug('--------Start of debug--------')
-        
-        _LOGGER.debug(message)
-        
-        _LOGGER.debug('--------End of debug--------')
-        _LOGGER.debug('-----------------------------')
+    
