@@ -7,7 +7,7 @@ from typing import Any
 import requests
 
 from .alarm_info import HyypAlarmInfos
-from .constants import DEFAULT_TIMEOUT, REQUEST_HEADER, STD_PARAMS, HyypPkg
+from .constants import DEFAULT_TIMEOUT, REQUEST_HEADER, STD_PARAMS, DEBUG_CLIENT_STRING, HyypPkg
 from .exceptions import HTTPError, HyypApiError, InvalidURL
 
 _LOGGER = logging.getLogger(__name__)
@@ -95,6 +95,7 @@ class HyypClient:
         STD_PARAMS["token"] = _json_result["token"]
         STD_PARAMS["userId"] = _json_result["user"]["id"]
 
+        DEBUG_CLIENT_STRING["client_string"] = _json_result
         return _json_result
 
     def check_app_version(self) -> Any:

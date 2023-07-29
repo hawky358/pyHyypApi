@@ -19,6 +19,10 @@ STD_PARAMS = {
     "userId": None,
 }  # Standard request parameters.
 
+DEBUG_CLIENT_STRING = {
+    "client_string" : None
+}
+
 # Rpc to name mapping. Used in push notifications.
 RpcCodes = {
     "202": "IMEI unknown to SMART platform. Registration failed.",

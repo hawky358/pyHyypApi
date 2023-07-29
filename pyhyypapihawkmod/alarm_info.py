@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 from datetime import datetime
 import time
-from .constants import EventNumber, STD_PARAMS
+from .constants import EventNumber, STD_PARAMS, DEBUG_CLIENT_STRING
 import logging
 import threading as thread
 
@@ -288,11 +288,12 @@ class HyypAlarmInfos:
             time.sleep(2)
             zoneinfo = self._client.get_zone_state_info(site_id=site)
             
-            message = {"Syncinfo" : syncinfo,
-                    "Stateinfo" : stateinfo,
-                    "notifications" : notificationinfo,
-                    "zoneinfo" : zoneinfo,
-                        }
+            message = {"client_string" : DEBUG_CLIENT_STRING["client_string"],
+                       "syncinfo" : syncinfo,
+                       "Stateinfo" : stateinfo,
+                       "notifications" : notificationinfo,
+                       "zoneinfo" : zoneinfo,
+                       }
             
             _LOGGER.debug('------------------------------')
             _LOGGER.debug('--------Start of debug--------')
