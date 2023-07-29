@@ -46,6 +46,15 @@ Changelog
 - Changed API to "Push" mode instead of "Poll". API will now send to Home Assistant when data is ready instead of Home assistant Polling
   - A "client.request_push()" method allows home assistant to request an earlier push
 
+1.2.0b8
+- Added additional debug checks
+
+1.2.0b2
+- Added additional checks for openviolated and tampered information when not received
+
+1.2.0b1
+- Version bump for semantic versioning 
+
 1.1.7b3
 - Revert 1.1.7b2
 

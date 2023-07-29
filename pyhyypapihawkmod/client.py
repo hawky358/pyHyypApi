@@ -9,7 +9,7 @@ import threading as thread
 import time
 
 from .alarm_info import HyypAlarmInfos
-from .constants import DEFAULT_TIMEOUT, REQUEST_HEADER, STD_PARAMS, PUSH_DELAY, HyypPkg
+from .constants import DEFAULT_TIMEOUT, REQUEST_HEADER, STD_PARAMS, DEBUG_CLIENT_STRING, PUSH_DELAY, HyypPkg
 from .exceptions import HTTPError, HyypApiError, InvalidURL
 
 _LOGGER = logging.getLogger(__name__)
@@ -99,6 +99,7 @@ class HyypClient:
         STD_PARAMS["token"] = _json_result["token"]
         STD_PARAMS["userId"] = _json_result["user"]["id"]
 
+        DEBUG_CLIENT_STRING["client_string"] = _json_result
         return _json_result
 
     def check_app_version(self) -> Any:
@@ -167,9 +168,9 @@ class HyypClient:
 
         return HyypAlarmInfos(self).status()
 
-    def get_debug_notifications(self) -> dict[Any, Any]:
+    def get_debug_infos(self) -> dict[Any, Any]:
         """Get alarm infos formatted for hass infos."""
-        return HyypAlarmInfos(self).debug_notifications()
+        return HyypAlarmInfos(self).get_debug_info()
 
     def site_notifications(
         self, site_id: int, timestamp: int | None = None, json_key: int | None = None

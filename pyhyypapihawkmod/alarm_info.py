@@ -4,8 +4,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 from datetime import datetime
 import time
-from .constants import EventNumber, STD_PARAMS
+from .constants import EventNumber, STD_PARAMS, DEBUG_CLIENT_STRING
 import logging
+import threading as thread
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -13,7 +14,7 @@ _LOGGER = logging.getLogger(__name__)
 if TYPE_CHECKING:
     from .client import HyypClient
 
-SLEEP_DELAY = 0.5
+SLEEP_DELAY = 0.6
 
 class HyypAlarmInfos:
     """Initialize Hyyp alarm objects."""
@@ -48,13 +49,14 @@ class HyypAlarmInfos:
         for siteinfo in self._zone_state_info:
             if site in siteinfo:
                 current_siteinfo = siteinfo[site]
+                if current_siteinfo is None:
+                    return None
                 if "status" not in current_siteinfo:
                     return None
                 if current_siteinfo["status"] != "SUCCESS":
                     return None
         return current_siteinfo
-            
-
+        
     def _fetch_notifications(self, site_id: int) -> dict[Any,Any]:
         """Fetch and cache site notifications."""
         self._notifications = self._client.site_notifications(site_id=site_id)
@@ -188,10 +190,9 @@ class HyypAlarmInfos:
 
                 # New zone information from IDS servers               
                 for zone in site_ids[site]["partitions"][partition]["zones"]:
-                    if  (type(zone_states) is not dict):
+                    if zone_states is None:
                         continue
-                    if  ("zones" not in zone_states):
-                        _LOGGER.error("Not none, but no zones?")
+                    if "zones" not in zone_states:
                         continue
                     for zone_state in zone_states["zones"]:
                         if site_ids[site]["partitions"][partition]["zones"][zone][
@@ -258,29 +259,42 @@ class HyypAlarmInfos:
 
 
 
-    def debug_notifications(self) -> dict[Any, Any]:
+    def debug_thread(self):
+        while 1:
+        
+            _LOGGER.setLevel(logging.DEBUG)
+            time.sleep(1.5)
+            syncinfo = self._client.get_sync_info()
+            time.sleep(1)
+            stateinfo = self._client.get_state_info()
+            time.sleep(2)
+            site = syncinfo["sites"][0]["id"]
+            time.sleep(2)
+            notificationinfo = self._client.site_notifications(site_id=site)
+            time.sleep(2)
+            zoneinfo = self._client.get_zone_state_info(site_id=site)
+            
+            message = {"client_string" : DEBUG_CLIENT_STRING["client_string"],
+                       "syncinfo" : syncinfo,
+                       "Stateinfo" : stateinfo,
+                       "notifications" : notificationinfo,
+                       "zoneinfo" : zoneinfo,
+                       }
+            
+            _LOGGER.debug('------------------------------')
+            _LOGGER.debug('--------Start of debug--------')
+            
+            _LOGGER.debug(message)
+            
+            _LOGGER.debug('--------End of debug--------')
+            _LOGGER.debug('-----------------------------')
+            time.sleep(30)
+    
+
+
+    def get_debug_info(self) -> dict[Any, Any]:
         """Pull notifications for debug purposes."""
         # The API returns data from site level.
-
-        """
-        self._fetch_data()
-        site_ids = {site["id"]: site for site in self._sync_info["sites"]}
+        thread.Thread(target=self.debug_thread).start()
         
-        for site in site_ids:
-            self._fetch_notifications(site_id=site)
-            site_ids[site] = self._notifications
-
-
-        return site_ids
-        """
-
-
-        self._fetch_data()
-        fb = self.get_zone_state_info_for_site(108781)
-        message = {"rand" : "1147",
-                    "raw" : self._zone_state_info,
-                   "forsite" : fb
-                    }
-        
-        
-        return fb
+    
