@@ -34,7 +34,7 @@ API_ENDPOINT_SET_NOTIFICATION_SUBSCRIPTIONS = "/user/setNotificationSubscription
 API_ENDPOINT_TRIGGER_AUTOMATION = "/device/trigger"
 API_ENDPOINT_GET_ZONE_STATE_INFO = "/device/getZoneStateInfo"
 
-
+REQUEST_PUSH_TIMEOUT = 1.5
 class HyypClient:
     """Initialize api client object."""
 
@@ -56,8 +56,11 @@ class HyypClient:
         STD_PARAMS["token"] = token
         STD_PARAMS["userId"] = userid
         self._timeout = timeout
-        self.callback_function = None
+        self.callback_function_alarm_info = None
+        self.callback_function_fcm_info = None
         self.time_to_push = PUSH_DELAY
+        self.forced_refresh = False
+        self.alarminfos = HyypAlarmInfos(self)
 
     def login(self) -> Any:
         """Login to ADT Secure Home API."""
@@ -65,7 +68,6 @@ class HyypClient:
         _params = STD_PARAMS.copy()
         _params["email"] = self._email
         _params["password"] = self._password
-
         try:
             req = self._session.get(
                 "https://" + BASE_URL + API_ENDPOINT_LOGIN,
@@ -142,31 +144,44 @@ class HyypClient:
 
         return _json_result
 
-    def push_timer(self):
-        SLEEP_DELAY = 0.2
+    def alarm_info_push_timer(self):
+        SLEEP_DELAY = 0.1
         while 1:
+            if self.forced_refresh and self.time_to_push > REQUEST_PUSH_TIMEOUT:
+                self.time_to_push = REQUEST_PUSH_TIMEOUT
             while self.time_to_push > 0:
                 time.sleep(SLEEP_DELAY)
                 self.time_to_push -= SLEEP_DELAY
             alarminfo = self.load_alarm_infos()
-            self.callback_function(alarminfo)
+            self.callback_function_alarm_info(alarminfo)
+            self.forced_refresh = False
             self.time_to_push = PUSH_DELAY
 
-    def request_push(self):
-        REQUEST_PUSH_TIMEOUT = 1.5
+    def request_alarm_info_push_to_hass(self):
+        self.forced_refresh = True
         self.time_to_push = REQUEST_PUSH_TIMEOUT
         
+    def initialize_alarm_info_push_timer(self):
+        thread.Thread(target=self.alarm_info_push_timer).start()
 
-    def initialize_push_timer(self):
-        thread.Thread(target=self.push_timer).start()
-
-    def register_callback(self, callback_function):
-        self.callback_function = callback_function
+    def register_alarm_info_callback(self, callback_function):
+        self.callback_function_alarm_info = callback_function
 
     def load_alarm_infos(self) -> dict[Any, Any]:
         """Get alarm infos formatted for hass infos."""
+        forced = self.forced_refresh
+        #return HyypAlarmInfos(self).status()
+        return self.alarminfos.status(forced=forced)
 
-        return HyypAlarmInfos(self).status()
+    def initialize_fcm_notification_listener(self):
+        pass
+        #thread.Thread(target=self.alarm_info_push_timer).start()
+
+    def register_fcm_info_callback(self, callback_function):
+        self.callback_function_fcm_info = callback_function
+        
+
+
 
     def get_debug_infos(self) -> dict[Any, Any]:
         """Get alarm infos formatted for hass infos."""
@@ -590,7 +605,7 @@ class HyypClient:
             )
 
             req.raise_for_status()
-
+        
         except requests.ConnectionError as err:
             raise InvalidURL("A Invalid URL or Proxy error occured") from err
 
@@ -757,7 +772,7 @@ class HyypClient:
 
         except requests.HTTPError as err:
             raise HTTPError from err
-
+        
         try:
             _json_result: dict[Any, Any] = req.json()
 
@@ -889,7 +904,7 @@ class HyypClient:
         _params["pin"] = pin
         del _params["imei"]
         _params["clientImei"] = STD_PARAMS["imei"]
-
+        
         try:
             req = self._session.get(
                 "https://" + BASE_URL + API_ENDPOINT_SET_ZONE_BYPASS,

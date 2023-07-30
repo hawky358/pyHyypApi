@@ -14,7 +14,7 @@ _LOGGER = logging.getLogger(__name__)
 if TYPE_CHECKING:
     from .client import HyypClient
 
-SLEEP_DELAY = 0.6
+SLEEP_DELAY = 0.5
 
 class HyypAlarmInfos:
     """Initialize Hyyp alarm objects."""
@@ -28,19 +28,23 @@ class HyypAlarmInfos:
         self._zone_state_info = []
         self._last_notification_check_timestamp = 0
 
-    def _fetch_data(self) -> None:
+    def _fetch_data(self, forced=False) -> None:
         """Fetch data via client api."""
-        #time.sleep(SLEEP_DELAY)
-        self._sync_info = self._client.get_sync_info()
-        time.sleep(SLEEP_DELAY)
-        self._state_info = self._client.get_state_info()
-        self._zone_state_info.clear()
-        for site in self._sync_info["sites"]:
-            siteid = site["id"]
+        #forced = False
+        if not forced:
             time.sleep(SLEEP_DELAY)
-            site_zone_info = self._client.get_zone_state_info(site_id=siteid)
-            entry = {siteid : site_zone_info}
-            self._zone_state_info.append(entry)
+        self._sync_info = self._client.get_sync_info()
+        if not forced:
+            time.sleep(SLEEP_DELAY)
+        self._state_info = self._client.get_state_info()
+        if not forced:
+            self._zone_state_info.clear()
+            for site in self._sync_info["sites"]:
+                siteid = site["id"]
+                time.sleep(SLEEP_DELAY)
+                site_zone_info = self._client.get_zone_state_info(site_id=siteid)
+                entry = {siteid : site_zone_info}
+                self._zone_state_info.append(entry)
 
             
         
@@ -198,8 +202,9 @@ class HyypAlarmInfos:
                         if site_ids[site]["partitions"][partition]["zones"][zone][
                             "number"] != zone_state["number"]:
                             continue
-                        site_ids[site]["partitions"][partition]["zones"][zone][
-                            "bypassed"] = bool(zone_state["bypassed"])
+                     #   site_ids[site]["partitions"][partition]["zones"][zone][
+                     #       "bypassed"] = bool(zone_state["bypassed"] or 
+                     #                          zone in self._state_info["bypassedZoneIds"])
                         site_ids[site]["partitions"][partition]["zones"][zone][
                             "openviolated"] = bool(zone_state["openViolated"])
                         site_ids[site]["partitions"][partition]["zones"][zone][
@@ -249,10 +254,9 @@ class HyypAlarmInfos:
                         
         return site_ids
 
-    def status(self) -> dict[Any, Any]:
+    def status(self, forced=False) -> dict[Any, Any]:
         """Return the status of Hyyp connected alarms."""
-
-        self._fetch_data()
+        self._fetch_data(forced=forced)
         formatted_data: dict[Any, Any] = self._format_data()
 
         return formatted_data
