@@ -10,8 +10,9 @@ import time
 
 from .alarm_info import HyypAlarmInfos
 from .push_receiver import FCMListener, FCMRegistration
-from .constants import DEFAULT_TIMEOUT, REQUEST_HEADER, STD_PARAMS, DEBUG_CLIENT_STRING, PUSH_DELAY, GCF_SENDER_ID, HyypPkg
+from .constants import DEFAULT_TIMEOUT, REQUEST_HEADER, STD_PARAMS, DEBUG_CLIENT_STRING, PUSH_DELAY, GCF_SENDER_ID, IMEI_SEED, HyypPkg
 from .exceptions import HTTPError, HyypApiError, InvalidURL
+from .imei import ImeiGenerator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -47,7 +48,8 @@ class HyypClient:
         timeout: int = DEFAULT_TIMEOUT,
         token: str | None = None,
         userid: int | None = None,
-        fcm_credentials: None = None
+        fcm_credentials: None = None,
+        imei: str | None = None
     ) -> None:
         """Initialize the client object."""
         self._email = email
@@ -57,6 +59,7 @@ class HyypClient:
         STD_PARAMS["pkg"] = pkg
         STD_PARAMS["token"] = token
         STD_PARAMS["userId"] = userid
+        STD_PARAMS["imei"] = imei
         self._timeout = timeout
         self.callback_function_alarm_info = None
         self.callback_function_fcm_info = None
@@ -66,9 +69,11 @@ class HyypClient:
         self.fcm_listener = FCMListener()
         self.fcm_register = FCMRegistration()
         self.fcm_credentials = fcm_credentials
-
+        
     def login(self) -> Any:
         """Login to ADT Secure Home API."""
+
+
 
         _params = STD_PARAMS.copy()
         _params["email"] = self._email
@@ -108,6 +113,10 @@ class HyypClient:
 
         DEBUG_CLIENT_STRING["client_string"] = _json_result
         return _json_result
+
+    def generate_imei(self):
+        imei = ImeiGenerator().generate_imei(IMEI_SEED)
+        return imei
 
     def check_app_version(self) -> Any:
         """Check App version via API."""

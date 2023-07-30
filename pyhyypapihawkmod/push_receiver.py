@@ -505,5 +505,6 @@ class FCMListener:
             _new_persistend_ids = {"new_persistent_id" : idstr}
             callback(_new_persistend_ids)
             _notification = {"notification" : notification}
-            callback(_notification)        
+            callback(_notification)
+            _LOGGER.debug(_notification)        
         self.listen(credentials, on_notification, self.received_persistent_ids)

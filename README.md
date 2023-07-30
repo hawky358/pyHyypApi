@@ -41,6 +41,8 @@ print(json.dumps(client.get_sync_info(),indent=2))
 ```
 
 Changelog 
+1.3.0b3
+- Hotfix, notifications appear to go to random people. Implemented random IMEI
 
 1.3.0b2
 - Implementation of push receiver.

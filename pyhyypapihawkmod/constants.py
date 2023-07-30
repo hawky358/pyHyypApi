@@ -8,8 +8,10 @@ GCF_SENDER_ID = 87969245803
 REQUEST_HEADER = {
     "User-Agent": "okhttp/3.12.1",
 }  # Standard android header.
+
+IMEI_SEED = "15241971"
 STD_PARAMS = {
-    "imei": "152419714130158",  # Alphabet soup starts at 0
+    "imei": None,  # Alphabet soup starts at 0
     "appVersionCode": "401",
     "_appVersionCode": "401",
     "deviceOS": "12.0",
