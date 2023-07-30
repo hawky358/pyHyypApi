@@ -248,7 +248,6 @@ class FCMListener:
     def __init__(
         self,
     ) -> None:
-        self.blank = '123'
         self.fcm_registration = FCMRegistration()
         self.received_persistent_ids = []
 
@@ -486,45 +485,25 @@ class FCMListener:
         self.__listen(credentials, callback, received_persistent_ids, obj)
 
 
-    def runner(self, callback_send_to_hass_api, credentials = None, persistent_ids = None):
+    def runner(self, callback, credentials = None, persistent_ids = None):
         """sample that registers a token and waits for notifications"""
-
         logging.basicConfig(level=logging.INFO)
         if persistent_ids is None:
             persistent_ids = []
-
+            
         if credentials is None:
             credentials = self.fcm_registration.register(sender_id=int(GCF_SENDER_ID))
-            print("creds raw")
-            print(credentials)
-            #Send the credentials back to hass for storage via the callback
             _credentials = {"credentials" : credentials}
-            callback_send_to_hass_api(_credentials)
-            
-        _LOGGER.debug(credentials)
-        print("send notifications to {}".format(credentials["fcm"]["token"]))
+            callback(_credentials) #doesn't do anything for now. Using a different method currently
 
         def on_notification(obj, notification, data_message):
             idstr = data_message.persistent_id
-            print("idstring==")
-            print("*" + str(idstr) + "*")
-            print(']')
-            print('\n VVV ids')
-            print(persistent_ids)
-            print(idstr in persistent_ids)
-            print('\n')
             if idstr in persistent_ids:
                 return
             persistent_ids.append(idstr)
-            print('\n VVV ids after append')
-            print(persistent_ids)
-            
             self.received_persistent_ids = persistent_ids
-            _persistend_ids = {"persistend_ids" : self.received_persistent_ids}
-            callback_send_to_hass_api(_persistend_ids)
+            _new_persistend_ids = {"new_persistent_id" : idstr}
+            callback(_new_persistend_ids)
             _notification = {"notification" : notification}
-            callback_send_to_hass_api(_notification)
-            #print("Notification: \n")
-            #print(json.dumps(notification, indent=2))           
-
+            callback(_notification)        
         self.listen(credentials, on_notification, self.received_persistent_ids)

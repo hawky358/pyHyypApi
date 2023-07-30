@@ -9,7 +9,8 @@ import threading as thread
 import time
 
 from .alarm_info import HyypAlarmInfos
-from .constants import DEFAULT_TIMEOUT, REQUEST_HEADER, STD_PARAMS, DEBUG_CLIENT_STRING, PUSH_DELAY, HyypPkg
+from .push_receiver import FCMListener, FCMRegistration
+from .constants import DEFAULT_TIMEOUT, REQUEST_HEADER, STD_PARAMS, DEBUG_CLIENT_STRING, PUSH_DELAY, GCF_SENDER_ID, HyypPkg
 from .exceptions import HTTPError, HyypApiError, InvalidURL
 
 _LOGGER = logging.getLogger(__name__)
@@ -46,6 +47,7 @@ class HyypClient:
         timeout: int = DEFAULT_TIMEOUT,
         token: str | None = None,
         userid: int | None = None,
+        fcm_credentials: None = None
     ) -> None:
         """Initialize the client object."""
         self._email = email
@@ -61,6 +63,9 @@ class HyypClient:
         self.time_to_push = PUSH_DELAY
         self.forced_refresh = False
         self.alarminfos = HyypAlarmInfos(self)
+        self.fcm_listener = FCMListener()
+        self.fcm_register = FCMRegistration()
+        self.fcm_credentials = fcm_credentials
 
     def login(self) -> Any:
         """Login to ADT Secure Home API."""
@@ -173,14 +178,34 @@ class HyypClient:
         #return HyypAlarmInfos(self).status()
         return self.alarminfos.status(forced=forced)
 
-    def initialize_fcm_notification_listener(self):
-        pass
+    def initialize_fcm_notification_listener(self, persistent_pids = None):
+        
+        if self.fcm_credentials is None:
+            _LOGGER.warning("No FCM credentials available, disabling notifications")
+            return
+        if "fcm" not in self.fcm_credentials:
+            _LOGGER.warning("No FCM credentials available, disabling notifications")
+            return
+        thread.Thread(target=self.fcm_notification_thread,
+                      kwargs={'persistent_ids': persistent_pids}).start()
         #thread.Thread(target=self.alarm_info_push_timer).start()
+
+
+    def fcm_notification_thread(self, persistent_ids = None):
+        gcm_address = self.fcm_credentials["fcm"]["token"]
+        self.store_gcm_registrationid(gcm_id=gcm_address)  
+        self.fcm_listener.runner(callback=self.callback_function_fcm_info,
+                                 credentials=self.fcm_credentials,
+                                 persistent_ids=persistent_ids)
+
 
     def register_fcm_info_callback(self, callback_function):
         self.callback_function_fcm_info = callback_function
         
 
+    def get_intial_fcm_credentials(self):
+        return self.fcm_register.register(sender_id=GCF_SENDER_ID)
+        # error checker??
 
 
     def get_debug_infos(self) -> dict[Any, Any]:
@@ -588,14 +613,12 @@ class HyypClient:
 
         return _json_result[json_key]
 
-    def store_gcm_registrationid(self, gcm_id: str | None = None) -> Any:
+    def store_gcm_registrationid(self, gcm_id = None) -> Any:
         """Store gcmid."""
-
         _params = STD_PARAMS.copy()
         _params["gcmId"] = gcm_id
         del _params["imei"]
         _params["clientImei"] = STD_PARAMS["imei"]
-
         try:
             req = self._session.post(
                 "https://" + BASE_URL + API_ENDPOINT_STORE_GCM_REGISTRATION_ID,
@@ -603,7 +626,7 @@ class HyypClient:
                 params=_params,
                 timeout=self._timeout,
             )
-
+        
             req.raise_for_status()
         
         except requests.ConnectionError as err:
@@ -625,7 +648,6 @@ class HyypClient:
 
         if _json_result["status"] != "SUCCESS" and _json_result["error"] is not None:
             raise HyypApiError(f"Storing gcm id failed with: {_json_result['error']}")
-
         return _json_result
 
     def set_user_preference(

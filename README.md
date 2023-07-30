@@ -42,9 +42,17 @@ print(json.dumps(client.get_sync_info(),indent=2))
 
 Changelog 
 
-2.0.0b1
-- Changed API to "Push" mode instead of "Poll". API will now send to Home Assistant when data is ready instead of Home assistant Polling
-  - A "client.request_push()" method allows home assistant to request an earlier push
+1.3.0b2
+- Implementation of push receiver.
+
+1.3.0b1
+- API supports both push and poll mode.
+- API will can now send to Home Assistant when data is ready instead of Home assistant Polling
+- Relevant new methods:
+  - `request_alarm_info_push_to_hass()` - Hass can call this to request an earlier push instead of the 30 seconds
+  - `initialize_alarm_info_push_timer()` - Hass must call this when ready as it initializes the timer in the API
+  - `register_alarm_info_callback()` - Hass muss register a callback method using this method
+
 
 1.2.0b8
 - Added additional debug checks
