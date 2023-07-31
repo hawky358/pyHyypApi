@@ -272,11 +272,17 @@ class HyypAlarmInfos:
             time.sleep(1)
             stateinfo = self._client.get_state_info()
             time.sleep(2)
-            site = syncinfo["sites"][0]["id"]
-            time.sleep(2)
-            notificationinfo = self._client.site_notifications(site_id=site)
-            time.sleep(2)
-            zoneinfo = self._client.get_zone_state_info(site_id=site)
+            notificationinfo = {}
+            zoneinfo = {}
+            for site in syncinfo["sites"]:  
+                siteid = site["id"]
+                time.sleep(2)
+                cur_site_notificationinfo = self._client.site_notifications(site_id=siteid)
+                notificationinfo[siteid] = cur_site_notificationinfo
+                time.sleep(2)
+                cur_site_zoneinfo = self._client.get_zone_state_info(site_id=siteid)
+                zoneinfo[siteid] = cur_site_zoneinfo
+                
             
             message = {"client_string" : DEBUG_CLIENT_STRING["client_string"],
                        "syncinfo" : syncinfo,
