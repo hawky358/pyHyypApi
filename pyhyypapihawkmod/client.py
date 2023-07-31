@@ -61,20 +61,22 @@ class HyypClient:
         STD_PARAMS["userId"] = userid
         STD_PARAMS["imei"] = imei
         self._timeout = timeout
-        self.callback_function_alarm_info = None
-        self.callback_function_fcm_info = None
         self.time_to_push = PUSH_DELAY
         self.forced_refresh = False
         self.alarminfos = HyypAlarmInfos(self)
         self.fcm_listener = FCMListener()
         self.fcm_register = FCMRegistration()
         self.fcm_credentials = fcm_credentials
+    
         
     def login(self) -> Any:
         """Login to ADT Secure Home API."""
 
-
-
+        if STD_PARAMS["imei"] is None:
+            _LOGGER.warning("No IMEI found, this warning should not be seen in home assistant.")
+            STD_PARAMS["imei"] = self.generate_imei()
+            _LOGGER.warning("Generated session IMEI " + str(STD_PARAMS["imei"]))
+            
         _params = STD_PARAMS.copy()
         _params["email"] = self._email
         _params["password"] = self._password
@@ -158,7 +160,7 @@ class HyypClient:
 
         return _json_result
 
-    def alarm_info_push_timer(self):
+    def alarm_info_push_timer(self, callback):
         SLEEP_DELAY = 0.1
         while 1:
             if self.forced_refresh and self.time_to_push > REQUEST_PUSH_TIMEOUT:
@@ -167,7 +169,7 @@ class HyypClient:
                 time.sleep(SLEEP_DELAY)
                 self.time_to_push -= SLEEP_DELAY
             alarminfo = self.load_alarm_infos()
-            self.callback_function_alarm_info(alarminfo)
+            callback(alarminfo)
             self.forced_refresh = False
             self.time_to_push = PUSH_DELAY
 
@@ -175,11 +177,11 @@ class HyypClient:
         self.forced_refresh = True
         self.time_to_push = REQUEST_PUSH_TIMEOUT
         
-    def initialize_alarm_info_push_timer(self):
-        thread.Thread(target=self.alarm_info_push_timer).start()
+    def initialize_alarm_info_push_timer(self, callback):
+        thread.Thread(target=self.alarm_info_push_timer,
+                      kwargs={"callback" : callback}).start()
 
-    def register_alarm_info_callback(self, callback_function):
-        self.callback_function_alarm_info = callback_function
+        
 
     def load_alarm_infos(self) -> dict[Any, Any]:
         """Get alarm infos formatted for hass infos."""
@@ -187,8 +189,7 @@ class HyypClient:
         #return HyypAlarmInfos(self).status()
         return self.alarminfos.status(forced=forced)
 
-    def initialize_fcm_notification_listener(self, persistent_pids = None):
-        
+    def initialize_fcm_notification_listener(self, callback, persistent_pids = None):
         if self.fcm_credentials is None:
             _LOGGER.warning("No FCM credentials available, disabling notifications")
             return
@@ -196,21 +197,18 @@ class HyypClient:
             _LOGGER.warning("No FCM credentials available, disabling notifications")
             return
         thread.Thread(target=self.fcm_notification_thread,
-                      kwargs={'persistent_ids': persistent_pids}).start()
-        #thread.Thread(target=self.alarm_info_push_timer).start()
+                      kwargs={"persistent_ids" : persistent_pids,
+                              "callback" : callback
+                              }).start()
 
 
-    def fcm_notification_thread(self, persistent_ids = None):
+    def fcm_notification_thread(self, callback, persistent_ids = None):
         gcm_address = self.fcm_credentials["fcm"]["token"]
         self.store_gcm_registrationid(gcm_id=gcm_address)  
-        self.fcm_listener.runner(callback=self.callback_function_fcm_info,
+        self.fcm_listener.runner(callback=callback,
                                  credentials=self.fcm_credentials,
                                  persistent_ids=persistent_ids)
 
-
-    def register_fcm_info_callback(self, callback_function):
-        self.callback_function_fcm_info = callback_function
-        
 
     def get_intial_fcm_credentials(self):
         return self.fcm_register.register(sender_id=GCF_SENDER_ID)

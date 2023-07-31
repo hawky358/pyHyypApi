@@ -1,4 +1,4 @@
-This is a fork from https://github.com/RenierM26. This fork has reversed engineered the protobuf pb2 files and recompiled with version 4.21. THis fixes the issues on newer versions of home assistant.
+This is a fork from https://github.com/RenierM26. This fork has reversed engineered the protobuf pb2 files and recompiled with version 4.21. This fixes the issues on newer versions of home assistant and incorporated several new features. See the main integration: https://github.com/hawky358/hass_ids_hyyp for more information.
 
 # pyHyypApi
 API for ADT Secure Home and IDS Hyyp. There could be more variants but it's easy to add package names to the constants.py file.
@@ -11,8 +11,6 @@ How to use:
 ```pip install pyhyypapihawkmod```
 
   2.1. Login (ADT Secure Home):
-
-
 ```
 import pyhyypapihawkmod
 import json
@@ -41,6 +39,9 @@ print(json.dumps(client.get_sync_info(),indent=2))
 ```
 
 Changelog 
+1.3.0b4
+- Minor Refactoring
+
 1.3.0b3
 - Hotfix, notifications appear to go to random people. Implemented random IMEI
 
