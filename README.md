@@ -39,6 +39,9 @@ print(json.dumps(client.get_sync_info(),indent=2))
 ```
 
 Changelog 
+1.3.0b5
+- Added reconnect for timeouts
+
 1.3.0b4
 - Minor Refactoring
 

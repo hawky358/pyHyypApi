@@ -14,6 +14,7 @@ import time
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 import uuid
+import threading as thread
 
 import appdirs
 from cryptography.hazmat.backends import default_backend
@@ -52,6 +53,8 @@ FCM_ENDPOINT = "https://fcm.googleapis.com/fcm/send"
 GOOGLE_MTALK_ENDPOINT = "mtalk.google.com"
 READ_TIMEOUT_SECS = 60 * 60
 MIN_RESET_INTERVAL_SECS = 60 * 5
+MAX_SILENT_INTERVAL_SECS = 60 * 60
+STATUS_TIMEOUT = 1
 
 MCS_VERSION = 41
 PACKET_BY_TAG = [
@@ -250,6 +253,8 @@ class FCMListener:
     ) -> None:
         self.fcm_registration = FCMRegistration()
         self.received_persistent_ids = []
+        self.time_last_message_received = time.time()
+        self.time_of_last_reset = 0
 
 
     def __read(self, sock, size):
@@ -332,6 +337,7 @@ class FCMListener:
         _LOGGER.debug("tag %s (%s)", tag, PACKET_BY_TAG[tag])
         size = self.__read_varint32(data)
         _LOGGER.debug("size %s", size)
+        self.time_last_message_received = time.time()
         if size >= 0:
             buf = self.__read(data, size)
             _LOGGER.debug(hexlify(buf))
@@ -387,11 +393,10 @@ class FCMListener:
 
 
     def __reset(self, google_socket, credentials, persistent_ids):
-        last_reset = 0
         now = time.time()
-        if now - last_reset < MIN_RESET_INTERVAL_SECS:
+        if now - self.time_of_last_reset < MIN_RESET_INTERVAL_SECS:
             raise Exception("Too many connection reset attempts.")
-        last_reset = now
+        self.time_of_last_reset = now
         _LOGGER.debug("Reestablishing connection")
         try:
             google_socket.shutdown(2)
@@ -400,10 +405,17 @@ class FCMListener:
             _LOGGER.debug("Unable to close connection %f", err)
         return self.__login(credentials, persistent_ids)
 
+    def __status_check(self):
+        time_since_last_message = time.time() - self.time_last_message_received
+        if (time_since_last_message > MAX_SILENT_INTERVAL_SECS):
+            _LOGGER.info(f'No communications received in {time_since_last_message}s.  Resetting connection.')
+            return STATUS_TIMEOUT
+        return None
+
+
 
     def __listen(self, credentials, callback, persistent_ids, obj):
         google_socket = self.__login(credentials, persistent_ids)
-
         while True:
             try:
                 data = self.__recv(google_socket)
@@ -419,6 +431,10 @@ class FCMListener:
             except ConnectionResetError:
                 _LOGGER.debug("Connection Reset: Reconnecting")
                 google_socket = self.__login(credentials, persistent_ids)
+            if self.__status_check() == STATUS_TIMEOUT:
+                google_socket = self.__reset(google_socket, credentials, persistent_ids)
+           
+                
 
 
     def __handle_data_message(self, data, credentials, callback, obj):
