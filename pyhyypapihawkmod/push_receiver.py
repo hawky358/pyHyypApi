@@ -53,7 +53,7 @@ FCM_ENDPOINT = "https://fcm.googleapis.com/fcm/send"
 GOOGLE_MTALK_ENDPOINT = "mtalk.google.com"
 READ_TIMEOUT_SECS = 60 * 60
 MIN_RESET_INTERVAL_SECS = 60 * 5
-MAX_SILENT_INTERVAL_SECS = 60 * 60
+MAX_SILENT_INTERVAL_SECS = 60 * 30
 STATUS_TIMEOUT = 1
 
 MCS_VERSION = 41
@@ -253,8 +253,10 @@ class FCMListener:
     ) -> None:
         self.fcm_registration = FCMRegistration()
         self.received_persistent_ids = []
-        self.time_last_message_received = time.time()
         self.time_of_last_reset = 0
+        self.last_stream_id_received = 0
+        self.time_of_last_receive = time.time()
+        self.current_ping_thread = 0
 
 
     def __read(self, sock, size):
@@ -337,7 +339,8 @@ class FCMListener:
         _LOGGER.debug("tag %s (%s)", tag, PACKET_BY_TAG[tag])
         size = self.__read_varint32(data)
         _LOGGER.debug("size %s", size)
-        self.time_last_message_received = time.time()
+        self.last_stream_id_received += 1
+        self.time_of_last_receive = time.time()
         if size >= 0:
             buf = self.__read(data, size)
             _LOGGER.debug(hexlify(buf))
@@ -371,7 +374,6 @@ class FCMListener:
 
     def __login(self, credentials, persistent_ids):
         google_socket = self.__open()
-
         self.fcm_registration.gcm_check_in(**credentials["gcm"])
         req = LoginRequest()
         req.adaptive_heartbeat = False
@@ -389,6 +391,7 @@ class FCMListener:
         self.__send(google_socket, req)
         login_response = self.__recv(google_socket, first=True)
         _LOGGER.debug("Received login response: %s", login_response)
+        thread.Thread(target=self.__ping_scheduler, args=(google_socket,)).start()
         return google_socket
 
 
@@ -405,13 +408,21 @@ class FCMListener:
             _LOGGER.debug("Unable to close connection %f", err)
         return self.__login(credentials, persistent_ids)
 
-    def __status_check(self):
-        time_since_last_message = time.time() - self.time_last_message_received
-        if (time_since_last_message > MAX_SILENT_INTERVAL_SECS):
-            _LOGGER.info(f'No communications received in {time_since_last_message}s.  Resetting connection.')
-            return STATUS_TIMEOUT
-        return None
 
+    def __ping_scheduler(self, google_socket):
+        self.current_ping_thread += 1
+        if self.current_ping_thread > 10000:
+            self.current_ping_thread = 1
+        mythread = self.current_ping_thread
+        while mythread == self.current_ping_thread:
+            if time.time() - self.time_of_last_receive > MAX_SILENT_INTERVAL_SECS:
+                _LOGGER.debug("Sending PING now==========================")
+                self.__send_ping(google_socket=google_socket)
+                time.sleep(60)
+            time.sleep(60)
+        _LOGGER.debug("Closing PING thread : " + str(mythread))
+                
+        
 
 
     def __listen(self, credentials, callback, persistent_ids, obj):
@@ -431,10 +442,6 @@ class FCMListener:
             except ConnectionResetError:
                 _LOGGER.debug("Connection Reset: Reconnecting")
                 google_socket = self.__login(credentials, persistent_ids)
-            if self.__status_check() == STATUS_TIMEOUT:
-                google_socket = self.__reset(google_socket, credentials, persistent_ids)
-           
-                
 
 
     def __handle_data_message(self, data, credentials, callback, obj):
@@ -470,6 +477,14 @@ class FCMListener:
         return data.persistent_id
 
 
+    def __send_ping(self, google_socket):
+        req = HeartbeatPing()
+        #req.stream_id = data.stream_id + 1
+        req.last_stream_id_received = self.last_stream_id_received
+        #req.status = data.status
+        self.__send(google_socket, req)
+        
+
     def __handle_ping(self, google_socket, data):
         _LOGGER.debug(
             "Responding to ping: Stream ID: %s, Last: %s, Status: %s",
@@ -503,7 +518,7 @@ class FCMListener:
 
     def runner(self, callback, credentials = None, persistent_ids = None):
         """sample that registers a token and waits for notifications"""
-        logging.basicConfig(level=logging.INFO)
+        #_LOGGER.setLevel(logging.DEBUG)
         if persistent_ids is None:
             persistent_ids = []
             

@@ -39,6 +39,10 @@ print(json.dumps(client.get_sync_info(),indent=2))
 ```
 
 Changelog 
+
+1.3.0b6
+- Added 30 min ping (Ping is broken ...)
+
 1.3.0b5
 - Added reconnect for timeouts
 
