@@ -38,10 +38,17 @@ print(json.dumps(client.get_sync_info(),indent=2))
 
 ```
 
+
+Todo:
+- Look into v1 of the FCM API, may have to rewrite the entire push_received system.
+
 Changelog 
 
+1.3.0b7
+- Fixed HeartbeatPing and HeartbeatPingAck packets. Should now provide hearbeat and ack correctly.
+
 1.3.0b6
-- Added 30 min ping (Ping is broken ...)
+- Added 30 min ping (Ping is from initial implementation, to investigate). Currently reconnects
 
 1.3.0b5
 - Added reconnect for timeouts

@@ -53,8 +53,7 @@ FCM_ENDPOINT = "https://fcm.googleapis.com/fcm/send"
 GOOGLE_MTALK_ENDPOINT = "mtalk.google.com"
 READ_TIMEOUT_SECS = 60 * 60
 MIN_RESET_INTERVAL_SECS = 60 * 5
-MAX_SILENT_INTERVAL_SECS = 60 * 30
-STATUS_TIMEOUT = 1
+MAX_SILENT_INTERVAL_SECS = 60 * 15
 
 MCS_VERSION = 41
 PACKET_BY_TAG = [
@@ -254,9 +253,9 @@ class FCMListener:
         self.fcm_registration = FCMRegistration()
         self.received_persistent_ids = []
         self.time_of_last_reset = 0
-        self.last_stream_id_received = 0
         self.time_of_last_receive = time.time()
         self.current_ping_thread = 0
+        self.awaiting_ack = False 
 
 
     def __read(self, sock, size):
@@ -339,7 +338,6 @@ class FCMListener:
         _LOGGER.debug("tag %s (%s)", tag, PACKET_BY_TAG[tag])
         size = self.__read_varint32(data)
         _LOGGER.debug("size %s", size)
-        self.last_stream_id_received += 1
         self.time_of_last_receive = time.time()
         if size >= 0:
             buf = self.__read(data, size)
@@ -391,7 +389,9 @@ class FCMListener:
         self.__send(google_socket, req)
         login_response = self.__recv(google_socket, first=True)
         _LOGGER.debug("Received login response: %s", login_response)
-        thread.Thread(target=self.__ping_scheduler, args=(google_socket,)).start()
+        thread.Thread(target=self.__ping_scheduler, args=(google_socket,
+                                                          credentials,
+                                                          persistent_ids)).start()
         return google_socket
 
 
@@ -409,21 +409,50 @@ class FCMListener:
         return self.__login(credentials, persistent_ids)
 
 
-    def __ping_scheduler(self, google_socket):
+    def __ping_scheduler(self, google_socket, credentials, persistent_ids):
         self.current_ping_thread += 1
         if self.current_ping_thread > 10000:
             self.current_ping_thread = 1
         mythread = self.current_ping_thread
         while mythread == self.current_ping_thread:
+            if self.awaiting_ack:
+                self.awaiting_ack = False
+                self.__reset(google_socket=google_socket,
+                                credentials=credentials,
+                                persistent_ids=persistent_ids)
+                break
             if time.time() - self.time_of_last_receive > MAX_SILENT_INTERVAL_SECS:
                 _LOGGER.debug("Sending PING now==========================")
                 self.__send_ping(google_socket=google_socket)
-                time.sleep(60)
             time.sleep(60)
+
         _LOGGER.debug("Closing PING thread : " + str(mythread))
                 
-        
-
+                    
+    def __send_ping(self, google_socket):
+        self.awaiting_ack = True
+        header = bytearray([0, 0])
+        buf = bytes(header)
+        total = 0
+        while total < len(buf):
+            sent = google_socket.send(buf[total:])
+            if sent == 0:
+                raise RuntimeError("socket connection broken")
+            total += sent
+     
+     
+    def __handle_ping(self, google_socket):
+        header = bytearray([0, 2])
+        buf = bytes(header)
+        total = 0
+        while total < len(buf):
+            sent = google_socket.send(buf[total:])
+            if sent == 0:
+                raise RuntimeError("socket connection broken")
+            total += sent
+  
+     
+     
 
     def __listen(self, credentials, callback, persistent_ids, obj):
         google_socket = self.__login(credentials, persistent_ids)
@@ -434,7 +463,9 @@ class FCMListener:
                     msg_id = self.__handle_data_message(data, credentials, callback, obj)
                     persistent_ids.append(msg_id)
                 elif isinstance(data, HeartbeatPing):
-                    self.__handle_ping(google_socket, data)
+                    self.__handle_ping(google_socket)
+                elif isinstance(data, HeartbeatAck):
+                    self.awaiting_ack = False
                 elif data is None or isinstance(data, Close):
                     google_socket = self.__reset(google_socket, credentials, persistent_ids)
                 else:
@@ -477,27 +508,6 @@ class FCMListener:
         return data.persistent_id
 
 
-    def __send_ping(self, google_socket):
-        req = HeartbeatPing()
-        #req.stream_id = data.stream_id + 1
-        req.last_stream_id_received = self.last_stream_id_received
-        #req.status = data.status
-        self.__send(google_socket, req)
-        
-
-    def __handle_ping(self, google_socket, data):
-        _LOGGER.debug(
-            "Responding to ping: Stream ID: %s, Last: %s, Status: %s",
-            data.stream_id,
-            data.last_stream_id_received,
-            data.status,
-        )
-        req = HeartbeatAck()
-        req.stream_id = data.stream_id + 1
-        req.last_stream_id_received = data.stream_id
-        req.status = data.status
-        self.__send(google_socket, req)
-
 
     def listen(self, credentials, callback, received_persistent_ids=None, obj=None):
         """
@@ -518,7 +528,7 @@ class FCMListener:
 
     def runner(self, callback, credentials = None, persistent_ids = None):
         """sample that registers a token and waits for notifications"""
-        #_LOGGER.setLevel(logging.DEBUG)
+        _LOGGER.setLevel(logging.DEBUG)
         if persistent_ids is None:
             persistent_ids = []
             
