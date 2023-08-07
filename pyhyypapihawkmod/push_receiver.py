@@ -528,7 +528,7 @@ class FCMListener:
 
     def runner(self, callback, credentials = None, persistent_ids = None):
         """sample that registers a token and waits for notifications"""
-        _LOGGER.setLevel(logging.DEBUG)
+        #_LOGGER.setLevel(logging.DEBUG)
         if persistent_ids is None:
             persistent_ids = []
             

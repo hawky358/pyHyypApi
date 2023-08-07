@@ -44,6 +44,9 @@ Todo:
 
 Changelog 
 
+1.3.0b8
+- Changed debug level
+
 1.3.0b7
 - Fixed HeartbeatPing and HeartbeatPingAck packets. Should now provide hearbeat and ack correctly.
 
