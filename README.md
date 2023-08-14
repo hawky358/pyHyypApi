@@ -42,31 +42,16 @@ print(json.dumps(client.get_sync_info(),indent=2))
 
 Changelog 
 
-1.2.0b8
+1.2.1
 - Added additional debug checks
-
-1.2.0b2
 - Added additional checks for openviolated and tampered information when not received
 
-1.2.0b1
-- Version bump for semantic versioning 
-
-1.1.7b3
-- Revert 1.1.7b2
-
-1.1.7b2
-- Removed one sleep delay for slightly better response
-
-1.1.7b1
-
+1.1.7
 - Zones now show openviolated and tampered information from IDS server
 - Added delays between server requests to prevent blocking
 
-1.1.6-b3
+1.1.6
 - Zones now show openviolated and tampered information from IDS server
-
-1.1.6-b1
-- Test version
 - Will now show zones as bypassed when a stay arm bypassing zones is activated.
 
 1.1.5
