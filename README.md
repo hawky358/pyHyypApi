@@ -44,6 +44,15 @@ Todo:
 
 Changelog 
 
+1.3.1
+- Released
+
+1.3.0b10
+- Further heartbeat optimization
+
+1.3.0b9
+- Added exception for ping
+
 1.3.0b8
 - Changed debug level
 
