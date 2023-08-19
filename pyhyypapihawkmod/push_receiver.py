@@ -255,7 +255,8 @@ class FCMListener:
         self.time_of_last_reset = 0
         self.time_of_last_receive = time.time()
         self.current_ping_thread = 0
-        self.awaiting_ack = False 
+        self.awaiting_ack = False
+        self.connection_reset = False
 
 
     def __read(self, sock, size):
@@ -417,20 +418,24 @@ class FCMListener:
         while mythread == self.current_ping_thread:
             if self.awaiting_ack:
                 self.awaiting_ack = False
-                self.__reset(google_socket=google_socket,
-                                credentials=credentials,
-                                persistent_ids=persistent_ids)
+                self.connection_reset = True
+                _LOGGER.debug("Ping Timeout resetting")
                 break
             if time.time() - self.time_of_last_receive > MAX_SILENT_INTERVAL_SECS:
                 _LOGGER.debug("Sending PING now==========================")
-                self.__send_ping(google_socket=google_socket)
+                self.awaiting_ack = True
+                try:
+                    self.__send_ping(google_socket=google_socket)
+                except:
+                    _LOGGER.debug("Error with ping send %f")
+                    self.awaiting_ack = False
+                    self.connection_reset = True
             time.sleep(60)
 
         _LOGGER.debug("Closing PING thread : " + str(mythread))
                 
                     
     def __send_ping(self, google_socket):
-        self.awaiting_ack = True
         header = bytearray([0, 0])
         buf = bytes(header)
         total = 0
@@ -473,6 +478,11 @@ class FCMListener:
             except ConnectionResetError:
                 _LOGGER.debug("Connection Reset: Reconnecting")
                 google_socket = self.__login(credentials, persistent_ids)
+            if self.connection_reset:
+                _LOGGER.debug("Connection Reset due to ping timeout: Reconnecting")
+                self.connection_reset = False
+                google_socket = self.__reset(google_socket, credentials, persistent_ids)
+                
 
 
     def __handle_data_message(self, data, credentials, callback, obj):
@@ -527,7 +537,7 @@ class FCMListener:
 
 
     def runner(self, callback, credentials = None, persistent_ids = None):
-        """sample that registers a token and waits for notifications"""
+        """Registers a token and waits for notifications"""
         #_LOGGER.setLevel(logging.DEBUG)
         if persistent_ids is None:
             persistent_ids = []
