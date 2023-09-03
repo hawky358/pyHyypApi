@@ -7,6 +7,7 @@ from typing import Any
 import requests
 import threading as thread
 import time
+import os
 
 from .alarm_info import HyypAlarmInfos
 from .push_receiver import FCMListener, FCMRegistration
@@ -202,7 +203,20 @@ class HyypClient:
                               }).start()
 
 
+    def internet_connectivity(self):
+        _LOGGER.debug("Checking for connectivity")
+        reply = os.system('ping -c 1 www.google.com')
+        if reply == 0:
+            _LOGGER.debug("connectivity success")
+            return True
+        _LOGGER.debug("connectivity Failed")
+        return False
+
     def fcm_notification_thread(self, callback, persistent_ids = None):
+        _LOGGER.setLevel(logging.DEBUG)
+        while not self.internet_connectivity():
+            time.sleep(60)
+        
         gcm_address = self.fcm_credentials["fcm"]["token"]
         self.store_gcm_registrationid(gcm_id=gcm_address)  
         self.fcm_listener.runner(callback=callback,

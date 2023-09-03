@@ -255,7 +255,9 @@ class FCMListener:
         self.time_of_last_reset = 0
         self.time_of_last_receive = time.time()
         self.current_ping_thread = 0
+        self.listen_for_data = True
         self.awaiting_ack = False
+        self.ids_callback = None
 
 
     def __read(self, sock, size):
@@ -415,6 +417,14 @@ class FCMListener:
             google_socket.close()
         except OSError as err:
             _LOGGER.debug("Unable to close connection %f", err)
+            
+    def _restart_push_receiver(self, google_socket):
+        self.current_ping_thread += 10
+        self.listen_for_data = False
+        self._close_socket(google_socket)
+        _LOGGER.debug("RESTARTING PUSH RECEIVER")
+        self.ids_callback("restart_push_receiver")
+        
 
 
     def __ping_scheduler(self, google_socket, credentials, persistent_ids):
@@ -424,8 +434,7 @@ class FCMListener:
         mythread = self.current_ping_thread
         while mythread == self.current_ping_thread:
             if self.awaiting_ack:
-                self.awaiting_ack = False
-                self._close_socket(google_socket)
+                self._restart_push_receiver(google_socket)
                 _LOGGER.debug("Ping Timeout resetting")
                 break
             if time.time() - self.time_of_last_receive > MAX_SILENT_INTERVAL_SECS:
@@ -435,10 +444,8 @@ class FCMListener:
                     self.__send_ping(google_socket=google_socket)
                 except:
                     _LOGGER.debug("Error with ping send %f")
-                    self.awaiting_ack = False
-                    self._close_socket(google_socket)
+                    self._restart_push_receiver(google_socket)
             time.sleep(60)
-
         _LOGGER.debug("Closing PING thread : " + str(mythread))
                 
                     
@@ -468,7 +475,7 @@ class FCMListener:
 
     def __listen(self, credentials, callback, persistent_ids, obj):
         google_socket = self.__login(credentials, persistent_ids)
-        while True:
+        while self.listen_for_data:
             try:
                 data = self.__recv(google_socket)
                 if isinstance(data, DataMessageStanza):
@@ -484,7 +491,14 @@ class FCMListener:
                     _LOGGER.debug("Unexpected message type %s", type(data))
             except ConnectionResetError:
                 _LOGGER.debug("Connection Reset: Reconnecting")
-                google_socket = self.__login(credentials, persistent_ids)
+                #self._restart_push_receiver(google_socket)
+                self.listen_for_data = False
+                #google_socket = self.__login(credentials, persistent_ids)
+            except:
+                _LOGGER.debug("Other error")
+                self.listen_for_data = False
+                #self._restart_push_receiver(google_socket)
+                #google_socket = self.__login(credentials, persistent_ids)
                 
                 
 
@@ -520,8 +534,7 @@ class FCMListener:
         _LOGGER.debug("Received data message %s: %s", data.persistent_id, decrypted)
         callback(obj, json.loads(decrypted.decode("utf-8")), data)
         return data.persistent_id
-
-
+   
 
     def listen(self, credentials, callback, received_persistent_ids=None, obj=None):
         """
@@ -543,9 +556,10 @@ class FCMListener:
     def runner(self, callback, credentials = None, persistent_ids = None):
         """Registers a token and waits for notifications"""
         _LOGGER.setLevel(logging.DEBUG)
+        self.ids_callback = callback
+        
         if persistent_ids is None:
             persistent_ids = []
-            
         if credentials is None:
             credentials = self.fcm_registration.register(sender_id=int(GCF_SENDER_ID))
             _credentials = {"credentials" : credentials}
@@ -561,5 +575,6 @@ class FCMListener:
             callback(_new_persistend_ids)
             _notification = {"notification" : notification}
             callback(_notification)
-            _LOGGER.debug(_notification)        
+            _LOGGER.debug(_notification)   
+                 
         self.listen(credentials, on_notification, self.received_persistent_ids)
