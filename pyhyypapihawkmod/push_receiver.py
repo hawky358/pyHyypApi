@@ -256,7 +256,6 @@ class FCMListener:
         self.time_of_last_receive = time.time()
         self.current_ping_thread = 0
         self.awaiting_ack = False
-        self.connection_reset = False
 
 
     def __read(self, sock, size):
@@ -410,6 +409,14 @@ class FCMListener:
         return self.__login(credentials, persistent_ids)
 
 
+    def _close_socket(self, google_socket):
+        try:
+            google_socket.shutdown(2)
+            google_socket.close()
+        except OSError as err:
+            _LOGGER.debug("Unable to close connection %f", err)
+
+
     def __ping_scheduler(self, google_socket, credentials, persistent_ids):
         self.current_ping_thread += 1
         if self.current_ping_thread > 10000:
@@ -418,7 +425,7 @@ class FCMListener:
         while mythread == self.current_ping_thread:
             if self.awaiting_ack:
                 self.awaiting_ack = False
-                self.connection_reset = True
+                self._close_socket(google_socket)
                 _LOGGER.debug("Ping Timeout resetting")
                 break
             if time.time() - self.time_of_last_receive > MAX_SILENT_INTERVAL_SECS:
@@ -429,7 +436,7 @@ class FCMListener:
                 except:
                     _LOGGER.debug("Error with ping send %f")
                     self.awaiting_ack = False
-                    self.connection_reset = True
+                    self._close_socket(google_socket)
             time.sleep(60)
 
         _LOGGER.debug("Closing PING thread : " + str(mythread))
@@ -478,10 +485,7 @@ class FCMListener:
             except ConnectionResetError:
                 _LOGGER.debug("Connection Reset: Reconnecting")
                 google_socket = self.__login(credentials, persistent_ids)
-            if self.connection_reset:
-                _LOGGER.debug("Connection Reset due to ping timeout: Reconnecting")
-                self.connection_reset = False
-                google_socket = self.__reset(google_socket, credentials, persistent_ids)
+                
                 
 
 
@@ -538,7 +542,7 @@ class FCMListener:
 
     def runner(self, callback, credentials = None, persistent_ids = None):
         """Registers a token and waits for notifications"""
-        #_LOGGER.setLevel(logging.DEBUG)
+        _LOGGER.setLevel(logging.DEBUG)
         if persistent_ids is None:
             persistent_ids = []
             
