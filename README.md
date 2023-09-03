@@ -44,8 +44,11 @@ Todo:
 
 Changelog 
 
+1.3.1b2
+- Added connectivity check and better reconnect system when internet is lost.
+
 1.3.1
-- Released
+- Released 1.3.1 with push receiver system
 
 1.3.0b10
 - Further heartbeat optimization

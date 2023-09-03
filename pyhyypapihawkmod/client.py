@@ -187,7 +187,6 @@ class HyypClient:
     def load_alarm_infos(self) -> dict[Any, Any]:
         """Get alarm infos formatted for hass infos."""
         forced = self.forced_refresh
-        #return HyypAlarmInfos(self).status()
         return self.alarminfos.status(forced=forced)
 
     def initialize_fcm_notification_listener(self, callback, persistent_pids = None):
@@ -214,11 +213,13 @@ class HyypClient:
 
     def fcm_notification_thread(self, callback, persistent_ids = None):
         _LOGGER.setLevel(logging.DEBUG)
+        gcm_address = self.fcm_credentials["fcm"]["token"]
+       
         while not self.internet_connectivity():
             time.sleep(60)
-        
-        gcm_address = self.fcm_credentials["fcm"]["token"]
-        self.store_gcm_registrationid(gcm_id=gcm_address)  
+        time.sleep(60)
+        while self.store_gcm_registrationid(gcm_id=gcm_address) == 0:
+            time.sleep(30)
         self.fcm_listener.runner(callback=callback,
                                  credentials=self.fcm_credentials,
                                  persistent_ids=persistent_ids)
@@ -649,12 +650,18 @@ class HyypClient:
             )
         
             req.raise_for_status()
-        
+         
         except requests.ConnectionError as err:
             raise InvalidURL("A Invalid URL or Proxy error occured") from err
 
         except requests.HTTPError as err:
             raise HTTPError from err
+        
+        except:
+            _LOGGER.debug("GCM Registration Error")
+            return 0
+        
+        
 
         try:
             _json_result = req.json()
@@ -832,7 +839,7 @@ class HyypClient:
 
         return _json_result
 
-    # Untested.
+
     def trigger_alarm(
         self,
         site_id: int,

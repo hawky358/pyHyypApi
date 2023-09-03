@@ -255,7 +255,7 @@ class FCMListener:
         self.time_of_last_reset = 0
         self.time_of_last_receive = time.time()
         self.current_ping_thread = 0
-        self.listen_for_data = True
+        self.listen_for_data = False
         self.awaiting_ack = False
         self.ids_callback = None
 
@@ -420,6 +420,8 @@ class FCMListener:
             
     def _restart_push_receiver(self, google_socket):
         self.current_ping_thread += 10
+        self.awaiting_ack = False
+        self.time_of_last_receive = time.time() + 60
         self.listen_for_data = False
         self._close_socket(google_socket)
         _LOGGER.debug("RESTARTING PUSH RECEIVER")
@@ -429,16 +431,16 @@ class FCMListener:
 
     def __ping_scheduler(self, google_socket, credentials, persistent_ids):
         self.current_ping_thread += 1
-        if self.current_ping_thread > 10000:
+        if self.current_ping_thread > 1000:
             self.current_ping_thread = 1
         mythread = self.current_ping_thread
         while mythread == self.current_ping_thread:
             if self.awaiting_ack:
+                _LOGGER.debug(str(mythread) + ": Ping Timeout resetting")
                 self._restart_push_receiver(google_socket)
-                _LOGGER.debug("Ping Timeout resetting")
                 break
             if time.time() - self.time_of_last_receive > MAX_SILENT_INTERVAL_SECS:
-                _LOGGER.debug("Sending PING now==========================")
+                _LOGGER.debug(str(mythread) + ": Sending PING now==========================")
                 self.awaiting_ack = True
                 try:
                     self.__send_ping(google_socket=google_socket)
@@ -475,6 +477,7 @@ class FCMListener:
 
     def __listen(self, credentials, callback, persistent_ids, obj):
         google_socket = self.__login(credentials, persistent_ids)
+        self.listen_for_data = True
         while self.listen_for_data:
             try:
                 data = self.__recv(google_socket)
@@ -495,7 +498,7 @@ class FCMListener:
                 self.listen_for_data = False
                 #google_socket = self.__login(credentials, persistent_ids)
             except:
-                _LOGGER.debug("Other error")
+                _LOGGER.debug("Other Listener Error")
                 self.listen_for_data = False
                 #self._restart_push_receiver(google_socket)
                 #google_socket = self.__login(credentials, persistent_ids)
