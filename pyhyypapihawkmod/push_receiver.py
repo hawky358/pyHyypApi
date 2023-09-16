@@ -255,7 +255,7 @@ class FCMListener:
         self.time_of_last_reset = 0
         self.time_of_last_receive = time.time()
         self.current_ping_thread = 0
-        self.listen_for_data = False
+        self.listen_for_data_thread = 0
         self.awaiting_ack = False
         self.ids_callback = None
 
@@ -422,7 +422,7 @@ class FCMListener:
         self.current_ping_thread += 10
         self.awaiting_ack = False
         self.time_of_last_receive = time.time() + 60
-        self.listen_for_data = False
+        self.listen_for_data_thread += 1
         self._close_socket(google_socket)
         _LOGGER.debug("RESTARTING PUSH RECEIVER")
         self.ids_callback("restart_push_receiver")
@@ -477,8 +477,9 @@ class FCMListener:
 
     def __listen(self, credentials, callback, persistent_ids, obj):
         google_socket = self.__login(credentials, persistent_ids)
-        self.listen_for_data = True
-        while self.listen_for_data:
+        self.listen_for_data_thread += 1
+        mythread = self.listen_for_data_thread
+        while mythread == self.listen_for_data_thread:
             try:
                 data = self.__recv(google_socket)
                 if isinstance(data, DataMessageStanza):
@@ -489,19 +490,21 @@ class FCMListener:
                 elif isinstance(data, HeartbeatAck):
                     self.awaiting_ack = False
                 elif data is None or isinstance(data, Close):
+                    self.listen_for_data_thread += 1
                     google_socket = self.__reset(google_socket, credentials, persistent_ids)
                 else:
                     _LOGGER.debug("Unexpected message type %s", type(data))
             except ConnectionResetError:
                 _LOGGER.debug("Connection Reset: Reconnecting")
                 #self._restart_push_receiver(google_socket)
-                self.listen_for_data = False
+                self.listen_for_data_thread += 1
                 #google_socket = self.__login(credentials, persistent_ids)
             except:
                 _LOGGER.debug("Other Listener Error")
-                self.listen_for_data = False
+                self.listen_for_data_thread += 1
                 #self._restart_push_receiver(google_socket)
                 #google_socket = self.__login(credentials, persistent_ids)
+        _LOGGER.debug("Closing main thread" + str(mythread))
                 
                 
 
