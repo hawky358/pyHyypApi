@@ -15,6 +15,7 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 import uuid
 import threading as thread
+import signal
 
 import appdirs
 from cryptography.hazmat.backends import default_backend
@@ -261,11 +262,14 @@ class FCMListener:
 
 
     def __read(self, sock, size):
+        _LOGGER.debug("Started reading")
+        _LOGGER.debug("Size: " + str(size))
         buf = b""
         while len(buf) < size:
             buf += sock.recv(size - len(buf))
+        _LOGGER.debug("Finished reading")
         return buf
-
+        
 
     # protobuf variable length integers are encoded in base 128
     # each byte contains 7 bits of the integer and the msb is set if there's
@@ -584,3 +588,15 @@ class FCMListener:
             _LOGGER.debug(_notification)   
                  
         self.listen(credentials, on_notification, self.received_persistent_ids)
+
+
+    def timeout_handler(self, signum, frame):
+        print("I'm out")
+        raise Exception("end of time")
+        
+    def looper():
+        while 1:
+            print("sec")
+            time.sleep(1)
+            
+    
