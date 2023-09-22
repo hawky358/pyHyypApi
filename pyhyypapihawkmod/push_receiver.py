@@ -265,9 +265,11 @@ class FCMListener:
         _LOGGER.debug("Started reading")
         _LOGGER.debug("Size: " + str(size))
         buf = b""
+        sock.settimeout(10)
         while len(buf) < size:
             buf += sock.recv(size - len(buf))
         _LOGGER.debug("Finished reading")
+        sock.settimeout(None)
         return buf
         
 
