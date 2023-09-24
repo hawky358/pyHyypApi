@@ -15,7 +15,6 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 import uuid
 import threading as thread
-import signal
 
 import appdirs
 from cryptography.hazmat.backends import default_backend
@@ -479,8 +478,6 @@ class FCMListener:
             total += sent
   
      
-     
-
     def __listen(self, credentials, callback, persistent_ids, obj):
         google_socket = self.__login(credentials, persistent_ids)
         self.listen_for_data_thread += 1
@@ -497,19 +494,15 @@ class FCMListener:
                     self.awaiting_ack = False
                 elif data is None or isinstance(data, Close):
                     self.listen_for_data_thread += 1
-                    google_socket = self.__reset(google_socket, credentials, persistent_ids)
+                    #google_socket = self.__reset(google_socket, credentials, persistent_ids)
                 else:
                     _LOGGER.debug("Unexpected message type %s", type(data))
             except ConnectionResetError:
                 _LOGGER.debug("Connection Reset: Reconnecting")
-                #self._restart_push_receiver(google_socket)
                 self.listen_for_data_thread += 1
-                #google_socket = self.__login(credentials, persistent_ids)
             except:
                 _LOGGER.debug("Other Listener Error")
                 self.listen_for_data_thread += 1
-                #self._restart_push_receiver(google_socket)
-                #google_socket = self.__login(credentials, persistent_ids)
         _LOGGER.debug("Closing main thread" + str(mythread))
                 
                 
@@ -590,15 +583,3 @@ class FCMListener:
             _LOGGER.debug(_notification)   
                  
         self.listen(credentials, on_notification, self.received_persistent_ids)
-
-
-    def timeout_handler(self, signum, frame):
-        print("I'm out")
-        raise Exception("end of time")
-        
-    def looper():
-        while 1:
-            print("sec")
-            time.sleep(1)
-            
-    
