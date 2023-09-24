@@ -560,7 +560,7 @@ class FCMListener:
 
     def runner(self, callback, credentials = None, persistent_ids = None):
         """Registers a token and waits for notifications"""
-        _LOGGER.setLevel(logging.DEBUG)
+        #_LOGGER.setLevel(logging.DEBUG)
         self.ids_callback = callback
         
         if persistent_ids is None:

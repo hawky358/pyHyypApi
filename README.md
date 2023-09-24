@@ -44,16 +44,16 @@ Todo:
 
 Changelog 
 
-1.3.1b2
+
+1.3.2
+- Fixed high cpu usage infinite loop
+- Added full restart callback for notification system
 - Added connectivity check and better reconnect system when internet is lost.
+
 
 1.3.1
 - Released 1.3.1 with push receiver system
-
-1.3.0b10
 - Further heartbeat optimization
-
-1.3.0b9
 - Added exception for ping
 
 1.3.0b8
