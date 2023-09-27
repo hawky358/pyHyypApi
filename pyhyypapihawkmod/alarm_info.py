@@ -14,7 +14,7 @@ _LOGGER = logging.getLogger(__name__)
 if TYPE_CHECKING:
     from .client import HyypClient
 
-SLEEP_DELAY = 0.6
+SLEEP_DELAY = 0.5
 
 class HyypAlarmInfos:
     """Initialize Hyyp alarm objects."""
@@ -28,18 +28,23 @@ class HyypAlarmInfos:
         self._zone_state_info = []
         self._last_notification_check_timestamp = 0
 
-    def _fetch_data(self) -> None:
+    def _fetch_data(self, forced=False) -> None:
         """Fetch data via client api."""
-        time.sleep(SLEEP_DELAY)
-        self._sync_info = self._client.get_sync_info()
-        time.sleep(SLEEP_DELAY)
-        self._state_info = self._client.get_state_info()
-        self._zone_state_info.clear()
-        for site in self._sync_info["sites"]:
-            siteid = site["id"]
+        #forced = False
+        if not forced:
             time.sleep(SLEEP_DELAY)
-            entry = {siteid : self._client.get_zone_state_info(site_id=siteid)}
-            self._zone_state_info.append(entry)
+        self._sync_info = self._client.get_sync_info()
+        if not forced:
+            time.sleep(SLEEP_DELAY)
+        self._state_info = self._client.get_state_info()
+        if not forced:
+            self._zone_state_info.clear()
+            for site in self._sync_info["sites"]:
+                siteid = site["id"]
+                time.sleep(SLEEP_DELAY)
+                site_zone_info = self._client.get_zone_state_info(site_id=siteid)
+                entry = {siteid : site_zone_info}
+                self._zone_state_info.append(entry)
 
             
         
@@ -55,10 +60,6 @@ class HyypAlarmInfos:
                 if current_siteinfo["status"] != "SUCCESS":
                     return None
         return current_siteinfo
-    
-            
-
-
         
     def _fetch_notifications(self, site_id: int) -> dict[Any,Any]:
         """Fetch and cache site notifications."""
@@ -117,12 +118,10 @@ class HyypAlarmInfos:
            
         triggeredZoneIds = []
         _new_notifications = self._new_notifications()
-        
         for _notification in _new_notifications:
             if _notification['eventNumber'] != 5:
                 continue
-            triggeredZoneIds.append(_notification['zoneId'])  
-                 
+            triggeredZoneIds.append(_notification['zoneId'])         
         _response = triggeredZoneIds
         
         return _response
@@ -166,13 +165,11 @@ class HyypAlarmInfos:
             for trigger_id in trigger_ids:
                 if trigger_id not in site_ids[site]["triggerIds"]:
                     continue
-                else:
-                    site_ids[site]["triggers"] = {
-                        key: value
-                        for (key, value) in trigger_ids.items()            
-                    }
-                
-            
+                site_ids[site]["triggers"] = {
+                    key: value
+                    for (key, value) in trigger_ids.items()            
+                }
+                    
             # Add partition info.
             site_ids[site]["partitions"] = {
                 partition_id: partition_ids[partition_id]
@@ -183,12 +180,11 @@ class HyypAlarmInfos:
                 # Add zone info to partition.
                 if partition not in site_ids[site]["partitions"]:
                     continue
-                else:  
-                    site_ids[site]["partitions"][partition]["zones"] = {
-                        key: value
-                        for (key, value) in zone_ids.items()
-                        if key in site_ids[site]["partitions"][partition]["zoneIds"]
-                    }
+                site_ids[site]["partitions"][partition]["zones"] = {
+                    key: value
+                    for (key, value) in zone_ids.items()
+                    if key in site_ids[site]["partitions"][partition]["zoneIds"]
+                }
 
                 # Add zone bypass info to zone.
                 for zone in site_ids[site]["partitions"][partition]["zones"]:
@@ -196,9 +192,7 @@ class HyypAlarmInfos:
                         "bypassed"
                     ] = bool(zone in self._state_info["bypassedZoneIds"])
 
-
-
-                # New zone information from IDS servers
+                # New zone information from IDS servers               
                 for zone in site_ids[site]["partitions"][partition]["zones"]:
                     if zone_states is None:
                         continue
@@ -208,8 +202,9 @@ class HyypAlarmInfos:
                         if site_ids[site]["partitions"][partition]["zones"][zone][
                             "number"] != zone_state["number"]:
                             continue
-                        site_ids[site]["partitions"][partition]["zones"][zone][
-                            "bypassed"] = bool(zone_state["bypassed"])
+                     #   site_ids[site]["partitions"][partition]["zones"][zone][
+                     #       "bypassed"] = bool(zone_state["bypassed"] or 
+                     #                          zone in self._state_info["bypassedZoneIds"])
                         site_ids[site]["partitions"][partition]["zones"][zone][
                             "openviolated"] = bool(zone_state["openViolated"])
                         site_ids[site]["partitions"][partition]["zones"][zone][
@@ -242,16 +237,13 @@ class HyypAlarmInfos:
                 for stay_profile in site_ids[site]["partitions"][partition]["stayProfiles"]:
                     if stay_profile not in self._state_info["armedStayProfileIds"]:
                         continue
-                    
                     site_ids[site]["partitions"][partition]["stayArmed"] = bool(
                         stay_profile in self._state_info["armedStayProfileIds"]
                     )
-                    
                     site_ids[site]["partitions"][partition]["stayArmedProfileName"] = (
                         site_ids[site]["partitions"][partition]["stayProfiles"][
                             stay_profile]["name"]
                     )
-                    
                     # Show zone as bypassed if stay partition has it bypassed                 
                     for zone in site_ids[site]["partitions"][partition]["zones"]:
                         bypassed_due_to_stay = zone in site_ids[site]["partitions"][partition]["stayProfiles"][stay_profile]['zoneIds']
@@ -260,13 +252,11 @@ class HyypAlarmInfos:
                         "bypassed"
                         ] = bool(site_ids[site]["partitions"][partition]["zones"][zone]["bypassed"] or bypassed_due_to_stay)
                         
-
         return site_ids
 
-    def status(self) -> dict[Any, Any]:
+    def status(self, forced=False) -> dict[Any, Any]:
         """Return the status of Hyyp connected alarms."""
-
-        self._fetch_data()
+        self._fetch_data(forced=forced)
         formatted_data: dict[Any, Any] = self._format_data()
 
         return formatted_data
@@ -282,11 +272,17 @@ class HyypAlarmInfos:
             time.sleep(1)
             stateinfo = self._client.get_state_info()
             time.sleep(2)
-            site = syncinfo["sites"][0]["id"]
-            time.sleep(2)
-            notificationinfo = self._client.site_notifications(site_id=site)
-            time.sleep(2)
-            zoneinfo = self._client.get_zone_state_info(site_id=site)
+            notificationinfo = {}
+            zoneinfo = {}
+            for site in syncinfo["sites"]:  
+                siteid = site["id"]
+                time.sleep(2)
+                cur_site_notificationinfo = self._client.site_notifications(site_id=siteid)
+                notificationinfo[siteid] = cur_site_notificationinfo
+                time.sleep(2)
+                cur_site_zoneinfo = self._client.get_zone_state_info(site_id=siteid)
+                zoneinfo[siteid] = cur_site_zoneinfo
+                
             
             message = {"client_string" : DEBUG_CLIENT_STRING["client_string"],
                        "syncinfo" : syncinfo,

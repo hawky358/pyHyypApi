@@ -1,4 +1,4 @@
-This is a fork from https://github.com/RenierM26. This fork has reversed engineered the protobuf pb2 files and recompiled with version 4.21. THis fixes the issues on newer versions of home assistant.
+This is a fork from https://github.com/RenierM26. This fork has reversed engineered the protobuf pb2 files and recompiled with version 4.21. This fixes the issues on newer versions of home assistant and incorporated several new features. See the main integration: https://github.com/hawky358/hass_ids_hyyp for more information.
 
 # pyHyypApi
 API for ADT Secure Home and IDS Hyyp. There could be more variants but it's easy to add package names to the constants.py file.
@@ -11,8 +11,6 @@ How to use:
 ```pip install pyhyypapihawkmod```
 
   2.1. Login (ADT Secure Home):
-
-
 ```
 import pyhyypapihawkmod
 import json
@@ -40,7 +38,52 @@ print(json.dumps(client.get_sync_info(),indent=2))
 
 ```
 
+
+Todo:
+- Look into v1 of the FCM API, may have to rewrite the entire push_received system.
+
 Changelog 
+
+
+1.3.2
+- Fixed high cpu usage infinite loop
+- Added full restart callback for notification system
+- Added connectivity check and better reconnect system when internet is lost.
+
+1.3.1
+- Released 1.3.1 with push receiver system
+- Further heartbeat optimization
+- Added exception for ping
+
+1.3.0b8
+- Changed debug level
+
+1.3.0b7
+- Fixed HeartbeatPing and HeartbeatPingAck packets. Should now provide hearbeat and ack correctly.
+
+1.3.0b6
+- Added 30 min ping (Ping is from initial implementation, to investigate). Currently reconnects
+
+1.3.0b5
+- Added reconnect for timeouts
+
+1.3.0b4
+- Minor Refactoring
+
+1.3.0b3
+- Hotfix, notifications appear to go to random people. Implemented random IMEI
+
+1.3.0b2
+- Implementation of push receiver.
+
+1.3.0b1
+- API supports both push and poll mode.
+- API will can now send to Home Assistant when data is ready instead of Home assistant Polling
+- Relevant new methods:
+  - `request_alarm_info_push_to_hass()` - Hass can call this to request an earlier push instead of the 30 seconds
+  - `initialize_alarm_info_push_timer()` - Hass must call this when ready as it initializes the timer in the API
+  - `register_alarm_info_callback()` - Hass muss register a callback method using this method
+
 
 1.2.1
 - Added additional debug checks

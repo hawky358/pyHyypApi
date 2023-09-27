@@ -5,10 +5,15 @@ import logging
 from typing import Any
 
 import requests
+import threading as thread
+import time
+import os
 
 from .alarm_info import HyypAlarmInfos
-from .constants import DEFAULT_TIMEOUT, REQUEST_HEADER, STD_PARAMS, DEBUG_CLIENT_STRING, HyypPkg
+from .push_receiver import FCMListener, FCMRegistration
+from .constants import DEFAULT_TIMEOUT, REQUEST_HEADER, STD_PARAMS, DEBUG_CLIENT_STRING, PUSH_DELAY, GCF_SENDER_ID, IMEI_SEED, HyypPkg
 from .exceptions import HTTPError, HyypApiError, InvalidURL
+from .imei import ImeiGenerator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,7 +37,7 @@ API_ENDPOINT_SET_NOTIFICATION_SUBSCRIPTIONS = "/user/setNotificationSubscription
 API_ENDPOINT_TRIGGER_AUTOMATION = "/device/trigger"
 API_ENDPOINT_GET_ZONE_STATE_INFO = "/device/getZoneStateInfo"
 
-
+REQUEST_PUSH_TIMEOUT = 1.5
 class HyypClient:
     """Initialize api client object."""
 
@@ -44,6 +49,8 @@ class HyypClient:
         timeout: int = DEFAULT_TIMEOUT,
         token: str | None = None,
         userid: int | None = None,
+        fcm_credentials: None = None,
+        imei: str | None = None
     ) -> None:
         """Initialize the client object."""
         self._email = email
@@ -53,15 +60,27 @@ class HyypClient:
         STD_PARAMS["pkg"] = pkg
         STD_PARAMS["token"] = token
         STD_PARAMS["userId"] = userid
+        STD_PARAMS["imei"] = imei
         self._timeout = timeout
-
+        self.time_to_push = PUSH_DELAY
+        self.forced_refresh = False
+        self.alarminfos = HyypAlarmInfos(self)
+        self.fcm_listener = FCMListener()
+        self.fcm_register = FCMRegistration()
+        self.fcm_credentials = fcm_credentials
+    
+        
     def login(self) -> Any:
         """Login to ADT Secure Home API."""
 
+        if STD_PARAMS["imei"] is None:
+            _LOGGER.warning("No IMEI found, this warning should not be seen in home assistant.")
+            STD_PARAMS["imei"] = self.generate_imei()
+            _LOGGER.warning("Generated session IMEI " + str(STD_PARAMS["imei"]))
+            
         _params = STD_PARAMS.copy()
         _params["email"] = self._email
         _params["password"] = self._password
-
         try:
             req = self._session.get(
                 "https://" + BASE_URL + API_ENDPOINT_LOGIN,
@@ -97,6 +116,10 @@ class HyypClient:
 
         DEBUG_CLIENT_STRING["client_string"] = _json_result
         return _json_result
+
+    def generate_imei(self):
+        imei = ImeiGenerator().generate_imei(IMEI_SEED)
+        return imei
 
     def check_app_version(self) -> Any:
         """Check App version via API."""
@@ -138,10 +161,74 @@ class HyypClient:
 
         return _json_result
 
+    def alarm_info_push_timer(self, callback):
+        SLEEP_DELAY = 0.1
+        while 1:
+            if self.forced_refresh and self.time_to_push > REQUEST_PUSH_TIMEOUT:
+                self.time_to_push = REQUEST_PUSH_TIMEOUT
+            while self.time_to_push > 0:
+                time.sleep(SLEEP_DELAY)
+                self.time_to_push -= SLEEP_DELAY
+            alarminfo = self.load_alarm_infos()
+            callback(alarminfo)
+            self.forced_refresh = False
+            self.time_to_push = PUSH_DELAY
+
+    def request_alarm_info_push_to_hass(self):
+        self.forced_refresh = True
+        self.time_to_push = REQUEST_PUSH_TIMEOUT
+        
+    def initialize_alarm_info_push_timer(self, callback):
+        thread.Thread(target=self.alarm_info_push_timer,
+                      kwargs={"callback" : callback}).start()
+
+        
+
     def load_alarm_infos(self) -> dict[Any, Any]:
         """Get alarm infos formatted for hass infos."""
+        forced = self.forced_refresh
+        return self.alarminfos.status(forced=forced)
 
-        return HyypAlarmInfos(self).status()
+    def initialize_fcm_notification_listener(self, callback, persistent_pids = None):
+        if self.fcm_credentials is None:
+            _LOGGER.warning("No FCM credentials available, disabling notifications")
+            return
+        if "fcm" not in self.fcm_credentials:
+            _LOGGER.warning("No FCM credentials available, disabling notifications")
+            return
+        thread.Thread(target=self.fcm_notification_thread,
+                      kwargs={"persistent_ids" : persistent_pids,
+                              "callback" : callback
+                              }).start()
+
+
+    def internet_connectivity(self):
+        _LOGGER.debug("Checking for connectivity")
+        reply = os.system('ping -c 1 www.google.com')
+        if reply == 0:
+            _LOGGER.debug("connectivity success")
+            return True
+        _LOGGER.debug("connectivity Failed")
+        return False
+
+    def fcm_notification_thread(self, callback, persistent_ids = None):
+        _LOGGER.setLevel(logging.DEBUG)
+        gcm_address = self.fcm_credentials["fcm"]["token"]
+       
+        while not self.internet_connectivity():
+            time.sleep(60)
+        time.sleep(60)
+        while self.store_gcm_registrationid(gcm_id=gcm_address) == 0:
+            time.sleep(30)
+        self.fcm_listener.runner(callback=callback,
+                                 credentials=self.fcm_credentials,
+                                 persistent_ids=persistent_ids)
+
+
+    def get_intial_fcm_credentials(self):
+        return self.fcm_register.register(sender_id=GCF_SENDER_ID)
+        # error checker??
+
 
     def get_debug_infos(self) -> dict[Any, Any]:
         """Get alarm infos formatted for hass infos."""
@@ -548,14 +635,12 @@ class HyypClient:
 
         return _json_result[json_key]
 
-    def store_gcm_registrationid(self, gcm_id: str | None = None) -> Any:
+    def store_gcm_registrationid(self, gcm_id = None) -> Any:
         """Store gcmid."""
-
         _params = STD_PARAMS.copy()
         _params["gcmId"] = gcm_id
         del _params["imei"]
         _params["clientImei"] = STD_PARAMS["imei"]
-
         try:
             req = self._session.post(
                 "https://" + BASE_URL + API_ENDPOINT_STORE_GCM_REGISTRATION_ID,
@@ -563,14 +648,20 @@ class HyypClient:
                 params=_params,
                 timeout=self._timeout,
             )
-
+        
             req.raise_for_status()
-
+         
         except requests.ConnectionError as err:
             raise InvalidURL("A Invalid URL or Proxy error occured") from err
 
         except requests.HTTPError as err:
             raise HTTPError from err
+        
+        except:
+            _LOGGER.debug("GCM Registration Error")
+            return 0
+        
+        
 
         try:
             _json_result = req.json()
@@ -585,7 +676,6 @@ class HyypClient:
 
         if _json_result["status"] != "SUCCESS" and _json_result["error"] is not None:
             raise HyypApiError(f"Storing gcm id failed with: {_json_result['error']}")
-
         return _json_result
 
     def set_user_preference(
@@ -732,7 +822,7 @@ class HyypClient:
 
         except requests.HTTPError as err:
             raise HTTPError from err
-
+        
         try:
             _json_result: dict[Any, Any] = req.json()
 
@@ -749,7 +839,7 @@ class HyypClient:
 
         return _json_result
 
-    # Untested.
+
     def trigger_alarm(
         self,
         site_id: int,
@@ -864,7 +954,7 @@ class HyypClient:
         _params["pin"] = pin
         del _params["imei"]
         _params["clientImei"] = STD_PARAMS["imei"]
-
+        
         try:
             req = self._session.get(
                 "https://" + BASE_URL + API_ENDPOINT_SET_ZONE_BYPASS,
