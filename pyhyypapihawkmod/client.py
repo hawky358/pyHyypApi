@@ -203,7 +203,7 @@ class HyypClient:
 
 
     def internet_connectivity(self):
-        #_LOGGER.debug("Checking for connectivity")
+        _LOGGER.debug("Checking for connectivity")
         reply = os.system('ping -c 1 www.google.com')
         if reply == 0:
             _LOGGER.debug("connectivity success")
@@ -212,7 +212,7 @@ class HyypClient:
         return False
 
     def fcm_notification_thread(self, callback, persistent_ids = None):
-        #_LOGGER.setLevel(logging.DEBUG)
+        _LOGGER.setLevel(logging.DEBUG)
         gcm_address = self.fcm_credentials["fcm"]["token"]
        
         while not self.internet_connectivity():

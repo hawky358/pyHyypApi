@@ -44,6 +44,9 @@ Todo:
 
 Changelog 
 
+1.3.3 b1
+
+- New test fix for infinite loop
 
 1.3.2
 - Fixed high cpu usage infinite loop

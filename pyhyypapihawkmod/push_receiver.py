@@ -263,12 +263,18 @@ class FCMListener:
     def __read(self, sock, size):
         _LOGGER.debug("Started reading")
         _LOGGER.debug("Size: " + str(size))
+        _count = 0
         buf = b""
-        sock.settimeout(10)
+        #sock.settimeout(10)
         while len(buf) < size:
+            _count += 1
             buf += sock.recv(size - len(buf))
+            if _count > 10:
+                _LOGGER.debug("Escaped infite loop")
+                sock.close()
+                return buf
         _LOGGER.debug("Finished reading")
-        sock.settimeout(None)
+        #sock.settimeout(None)
         return buf
         
 
@@ -424,7 +430,7 @@ class FCMListener:
             _LOGGER.debug("Unable to close connection %f", err)
             
     def _restart_push_receiver(self, google_socket):
-        self.current_ping_thread += 10
+        self.current_ping_thread += 1
         self.awaiting_ack = False
         self.time_of_last_receive = time.time() + 60
         self.listen_for_data_thread += 1
@@ -560,7 +566,7 @@ class FCMListener:
 
     def runner(self, callback, credentials = None, persistent_ids = None):
         """Registers a token and waits for notifications"""
-        #_LOGGER.setLevel(logging.DEBUG)
+        _LOGGER.setLevel(logging.DEBUG)
         self.ids_callback = callback
         
         if persistent_ids is None:
