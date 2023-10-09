@@ -3,17 +3,19 @@ This is a fork from https://github.com/RenierM26. This fork has reversed enginee
 
 
 
-
-
-
 # pyHyypApi
 
-**Note** this Api is built to work with the IDS Hyyp integration for home assistant and while the commands will work via a python console, this is not the recommended usage method.
+**Note** this Api is built to work with the IDS Hyyp integration for home assistant.
 
 API for ADT Secure Home and IDS Hyyp. There could be more variants but it's easy to add package names to the constants.py file.
 
 
 Changelog 
+
+1.3.4
+
+- Implementation / Release of infinite loop fix 
+- Disable of debug features.
 
 1.3.3 b1
 
