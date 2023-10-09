@@ -212,7 +212,7 @@ class HyypClient:
         return False
 
     def fcm_notification_thread(self, callback, persistent_ids = None):
-        _LOGGER.setLevel(logging.DEBUG)
+        #_LOGGER.setLevel(logging.DEBUG)
         gcm_address = self.fcm_credentials["fcm"]["token"]
        
         while not self.internet_connectivity():

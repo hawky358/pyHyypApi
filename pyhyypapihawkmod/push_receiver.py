@@ -265,7 +265,6 @@ class FCMListener:
         _LOGGER.debug("Size: " + str(size))
         _count = 0
         buf = b""
-        #sock.settimeout(10)
         while len(buf) < size:
             _count += 1
             buf += sock.recv(size - len(buf))
@@ -274,7 +273,6 @@ class FCMListener:
                 sock.close()
                 return buf
         _LOGGER.debug("Finished reading")
-        #sock.settimeout(None)
         return buf
         
 
@@ -566,7 +564,7 @@ class FCMListener:
 
     def runner(self, callback, credentials = None, persistent_ids = None):
         """Registers a token and waits for notifications"""
-        _LOGGER.setLevel(logging.DEBUG)
+        #_LOGGER.setLevel(logging.DEBUG)
         self.ids_callback = callback
         
         if persistent_ids is None:
