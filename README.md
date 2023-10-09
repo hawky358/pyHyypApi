@@ -1,46 +1,17 @@
 This is a fork from https://github.com/RenierM26. This fork has reversed engineered the protobuf pb2 files and recompiled with version 4.21. This fixes the issues on newer versions of home assistant and incorporated several new features. See the main integration: https://github.com/hawky358/hass_ids_hyyp for more information.
 
+
+
+
+
+
+
 # pyHyypApi
+
+**Note** this Api is built to work with the IDS Hyyp integration for home assistant and while the commands will work via a python console, this is not the recommended usage method.
+
 API for ADT Secure Home and IDS Hyyp. There could be more variants but it's easy to add package names to the constants.py file.
 
-
-How to use:
-
-  1. Install:
-
-```pip install pyhyypapihawkmod```
-
-  2.1. Login (ADT Secure Home):
-```
-import pyhyypapihawkmod
-import json
-client = pyhyypapihawkmod.hyypclient(email="",password="")
-client.login()
-```
-
-**OR**
-
-  2.2. Login (IDT Hyyp):
-
-```
-import pyhyypapihawkmod
-import json
-client = pyhyypapihawkmod.hyypclient(email="",password="",pkg=pyhyypapihawkmod.HyypPkg.IDS_HYYP_GENERIC.value)
-client.login()
-
-```
-
-
-3. Get site/partition/user/zone info:
-
-```
-print(json.dumps(client.get_sync_info(),indent=2))
-
-```
-
-
-Todo:
-- Look into v1 of the FCM API, may have to rewrite the entire push_received system.
 
 Changelog 
 
