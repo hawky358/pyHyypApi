@@ -203,7 +203,7 @@ class HyypClient:
 
 
     def internet_connectivity(self):
-        #_LOGGER.debug("Checking for connectivity")
+        _LOGGER.debug("Checking for connectivity")
         reply = os.system('ping -c 1 www.google.com')
         if reply == 0:
             _LOGGER.debug("connectivity success")

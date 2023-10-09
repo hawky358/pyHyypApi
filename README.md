@@ -15,6 +15,9 @@ API for ADT Secure Home and IDS Hyyp. There could be more variants but it's easy
 
 Changelog 
 
+1.3.3 b1
+
+- New test fix for infinite loop
 
 1.3.2
 - Fixed high cpu usage infinite loop
