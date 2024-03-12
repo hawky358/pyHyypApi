@@ -12,6 +12,9 @@ API for ADT Secure Home and IDS Hyyp. There could be more variants but it's easy
 
 Changelog 
 
+1.3.5
+- Internal update
+
 1.3.4
 
 - Implementation / Release of infinite loop fix 
