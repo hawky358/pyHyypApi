@@ -161,8 +161,13 @@ class HyypClient:
 
         return _json_result
 
-    def alarm_info_push_timer(self, callback):
+    def alarm_info_push_timer(self, callback, onetime = False):
         SLEEP_DELAY = 0.1
+        if onetime:
+            time.sleep(REQUEST_PUSH_TIMEOUT)
+            alarminfo = self.load_alarm_infos()
+            callback(alarminfo)
+            return
         while 1:
             if self.forced_refresh and self.time_to_push > REQUEST_PUSH_TIMEOUT:
                 self.time_to_push = REQUEST_PUSH_TIMEOUT
@@ -178,11 +183,10 @@ class HyypClient:
         self.forced_refresh = True
         self.time_to_push = REQUEST_PUSH_TIMEOUT
         
-    def initialize_alarm_info_push_timer(self, callback):
+    def initialize_alarm_info_push_timer(self, callback, onetime = False):
         thread.Thread(target=self.alarm_info_push_timer,
-                      kwargs={"callback" : callback}).start()
+                      kwargs={"callback" : callback, "onetime" : onetime}).start()
 
-        
 
     def load_alarm_infos(self) -> dict[Any, Any]:
         """Get alarm infos formatted for hass infos."""
@@ -200,7 +204,7 @@ class HyypClient:
                       kwargs={"persistent_ids" : persistent_pids,
                               "callback" : callback
                               }).start()
-
+       
 
     def internet_connectivity(self):
         _LOGGER.debug("Checking for connectivity")
