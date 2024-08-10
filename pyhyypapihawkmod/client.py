@@ -230,7 +230,7 @@ class HyypClient:
 
 
     def get_intial_fcm_credentials(self):
-        return self.fcm_register.register(sender_id=GCF_SENDER_ID)
+        return self.fcm_register.register()
         # error checker??
 
 

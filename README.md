@@ -12,6 +12,9 @@ API for ADT Secure Home and IDS Hyyp. There could be more variants but it's easy
 
 Changelog 
 
+1.4.0b1
+- Updated the FCM api to the v1 API. (Still testing)
+
 1.3.6
 - Updated alarm_info_push_timer() method to have a "onetime" paramater. This allows you to get a once off "forced" update from IDS at any time by using the initialize_alarm_info_push_timer() method with the onetime parameter set to true
 

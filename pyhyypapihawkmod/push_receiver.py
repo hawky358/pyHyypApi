@@ -13,10 +13,8 @@ import struct
 import time
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
-import uuid
 import threading as thread
-
-import appdirs
+import requests
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from google.protobuf.json_format import MessageToDict
@@ -50,10 +48,17 @@ REGISTER_URL = "https://android.clients.google.com/c2dm/register3"
 CHECKIN_URL = "https://android.clients.google.com/checkin"
 FCM_SUBSCRIBE = "https://fcm.googleapis.com/fcm/connect/subscribe"
 FCM_ENDPOINT = "https://fcm.googleapis.com/fcm/send"
+
+FCM_AUTH_URL = "https://firebaseinstallations.googleapis.com/v1/projects/hyyp-49b11/installations/"
+FCM_REGISTRATION_URL = "https://fcmtoken.googleapis.com/register"
+FCM_V1_REGISTRATION_URL = "https://fcmregistrations.googleapis.com/v1/"
+
 GOOGLE_MTALK_ENDPOINT = "mtalk.google.com"
 READ_TIMEOUT_SECS = 60 * 60
 MIN_RESET_INTERVAL_SECS = 60 * 5
 MAX_SILENT_INTERVAL_SECS = 60 * 15
+
+GOOGLE_APIKEY = "AIzaSyDH5H6kfGQEWm7FQSYfWYy8OAHPq__5Y6s"
 
 MCS_VERSION = 41
 PACKET_BY_TAG = [
@@ -93,7 +98,7 @@ class FCMRegistration:
                 resp = urlopen(req)
                 resp_data = resp.read()
                 resp.close()
-                _LOGGER.debug(resp_data)
+                _LOGGER.debug(resp_data)                
                 return resp_data
             except Exception as err:
                 _LOGGER.debug("error during request", exc_info=err)
@@ -138,7 +143,8 @@ class FCMRegistration:
         resp = AndroidCheckinResponse()
         resp.ParseFromString(resp_data)
         _LOGGER.debug(resp)
-        return MessageToDict(resp)
+        resp = MessageToDict(resp)        
+        return resp
 
 
     def urlsafe_base64(self, data):
@@ -152,93 +158,247 @@ class FCMRegistration:
         return res.replace(b"\n", b"").decode("ascii")
 
 
-    def gcm_register(self, appId, retries=5, **kwargs):
-        """
-        obtains a gcm token
 
-        appId: app id as an integer
-        retries: number of failed requests before giving up
+# start of new FCM functions
 
-        returns {"token": "...", "appId": 123123, "androidId":123123,
-                "securityToken": 123123}
-        """
-        # contains androidId, securityToken and more
-        chk = self.gcm_check_in()
-        _LOGGER.debug(chk)
-        body = {
-            "app": "org.chromium.linux",
-            "X-subtype": appId,
-            "device": chk["androidId"],
-            "sender": self.urlsafe_base64(SERVER_KEY),
+
+    def fcm_get_initial_auth_data(self, app_id, credentials = None, retries = 5):
+       
+        data =  {
+                "appId":app_id,
+                "sdkVersion":"i:8.10.0"
+            }
+        
+        headers = {
+                "x-goog-api-key" : GOOGLE_APIKEY,        
         }
-        data = urlencode(body)
+       
         _LOGGER.debug(data)
-        auth = "AidLogin {}:{}".format(chk["androidId"], chk["securityToken"])
-        req = Request(
-            url=REGISTER_URL, headers={"Authorization": auth}, data=data.encode("utf-8")
-        )
-        for _ in range(retries):
-            resp_data = self.__do_request(req, retries)
-            if b"Error" in resp_data:
-                err = resp_data.decode("utf-8")
-                _LOGGER.error("Register request has failed with %d", err)
-                continue
-            token = resp_data.decode("utf-8").split("=")[1]
-            chkfields = {k: chk[k] for k in ["androidId", "securityToken"]}
-            res = {"token": token, "appId": appId}
-            res.update(chkfields)
-            return res
-        return None
+        #error checks need to be added
+        req = requests.post(url=FCM_AUTH_URL, json=data, headers=headers)
+        fcm_auth_data = req.json()
+        fcm_auth_data["appid"] = app_id
+        return fcm_auth_data
 
 
-    def fcm_register(self, sender_id, token, retries=5):
-        """
-        generates key pair and obtains a fcm token
 
-        sender_id: sender id as an integer
-        token: the subscription token in the dict returned by gcm_register
-
-        returns {"keys": keys, "fcm": {...}}
-        """
-        # I used this analyzer to figure out how to slice the asn1 structs
-        # https://lapo.it/asn1js
-        # first byte of public key is skipped for some reason
-        # maybe it's always zero
+    def fcm_get_token(self, fcm_auth_data):
+        
+        check_in = self.gcm_check_in() 
+        firebase_installation_auth = fcm_auth_data["authToken"]["token"]
+        appid = fcm_auth_data["fid"]
+        gmp_app_id = fcm_auth_data["appid"]
+        androidid = check_in["androidId"]
+        security_token = check_in["securityToken"]
+        versioninfo = check_in["versionInfo"]
+      
+        
         public, private = generate_pair("ec", curve=str("secp256r1"))
-
-        _LOGGER.debug("# public")
-        _LOGGER.debug(b64encode(public.asn1.dump()))
-        _LOGGER.debug("# private")
-        _LOGGER.debug(b64encode(private.asn1.dump()))
         keys = {
             "public": self.urlsafe_base64(public.asn1.dump()[26:]),
             "private": self.urlsafe_base64(private.asn1.dump()),
             "secret": self.urlsafe_base64(os.urandom(16)),
         }
+                
+        
+        headers = {
+                "x-goog-firebase-installations-auth":firebase_installation_auth,
+                "authorization":"AidLogin " + androidid + ":" + security_token,
+                "info":versioninfo
+        }
+        
+        
+        data = {
+            "device":androidid,
+            "app":"com.hyyp247.home",
+            "app_ver":"4.2.2",
+            "X-cliv":"fiid-8.10.0",
+            "sender":GCF_SENDER_ID,
+            "X-subtype":GCF_SENDER_ID,
+            "appid":appid,
+            "gmp_app_id":gmp_app_id,
+            
+            }       
+          
+        data = urlencode(data)
+        req = requests.post(url=FCM_REGISTRATION_URL + "?" + data, headers=headers)
+        fcm_token = req.text
+        res = {"fcm": fcm_token}
+        res.update(check_in)
+        res.update(fcm_auth_data)
+        res.update(keys)
+        res = self.build_credetials_json(res)
+        return res
+
+    def fcm_subscribe(self, credentials):
+
+        firebase_installation_auth = credentials["auth_info"]["googleAuthToken"]
+        androidid = credentials["gcm"]["androidId"]
+        fid = credentials["auth_info"]["fid"]
+        gmp_app_id = credentials["gcm"]["appId"]
+        security_token = credentials["gcm"]["securityToken"]
+        fcm_token = credentials["fcm"]["token"]
+
+                 
+        headers = {
+                "x-goog-firebase-installations-auth":firebase_installation_auth,
+                "authorization":"AidLogin " + androidid + ":" + security_token,
+        }
+      
+        data = {
+            "device":androidid,
+            "app":"com.hyyp247.home",
+            "app_ver":"4.2.2",
+            "X-cliv":"fiid-8.10.0",
+            "sender":GCF_SENDER_ID,
+            "X-subtype":GCF_SENDER_ID,
+            "appid":fid,
+            "gmp_app_id":gmp_app_id,
+            "endpoint": "{}/{}".format(FCM_ENDPOINT, fcm_token),
+            "p256dh": credentials["keys"]["public"],
+            "auth": credentials["keys"]["secret"],           
+            }       
+      
+       
+        data = urlencode(data)
+        req = requests.post(url=FCM_REGISTRATION_URL + "?" + data, headers=headers)
+        return req
+
+
+
+
+#this isn't being used. I tested this but it doesn't seem to be working correctly
+# I am keeping the code to not lose the work I put in
+
+    def fcm_register_with_v1_api(self, credentials, retries = 5):  
+        print("using v1 api")
+        firebase_installation_auth = credentials["auth_info"]["googleAuthToken"]
+        androidid = credentials["gcm"]["androidId"]
+        security_token = credentials["gcm"]["securityToken"]
+        fcm_token = credentials["fcm"]["token"]
+ 
+ 
+        headers = {
+                "x-goog-api-key" : GOOGLE_APIKEY, 
+                "x-goog-firebase-installations-auth":firebase_installation_auth,
+                "authorization":"AidLogin " + androidid + ":" + security_token,
+        }
+ 
+ 
         data = urlencode(
             {
-                "authorized_entity": sender_id,
-                "endpoint": "{}/{}".format(FCM_ENDPOINT, token),
-                "encryption_key": keys["public"],
-                "encryption_auth": keys["secret"],
+                "endpoint": "{}/{}".format(FCM_ENDPOINT, fcm_token),
+                "encryption_key": credentials["keys"]["public"],
+                "encryption_auth": credentials["keys"]["secret"],
             }
         )
+        
+        data = {
+                "endpoint": "{}/{}".format(FCM_ENDPOINT, fcm_token),
+                "p256dh": credentials["keys"]["public"],
+                "auth": credentials["keys"]["secret"],
+                }   
+        
+        
+        data = {"web":{
+                "endpoint": "{}/{}".format(FCM_ENDPOINT, fcm_token),
+                "p256dh": credentials["keys"]["public"],
+                "auth": credentials["keys"]["secret"],
+                }
+        }
+        
+        data = {"web":{
+                "endpoint": "{}/{}".format(FCM_ENDPOINT, fcm_token),
+                "p256dh": credentials["keys"]["public"],
+                "auth": credentials["keys"]["secret"],
+                }
+        }    
+           
+        #data = urlencode(data)
+        
+        url_full = FCM_V1_REGISTRATION_URL + "projects/" + str(GCF_SENDER_ID) + "/registrations"
         _LOGGER.debug(data)
-        req = Request(url=FCM_SUBSCRIBE, data=data.encode("utf-8"))
-        resp_data = self.__do_request(req, retries)
-        return {"keys": keys, "fcm": json.loads(resp_data.decode("utf-8"))}
+        print("---")
+        #req = Request(url=url_full, data=data.encode("utf-8"), headers=headers)
+        #resp_data = self.__do_request(req, retries)
+        #resp_data = requests.post(url=url_full + "?" + data, headers=headers)
+        resp_data = requests.post(url=url_full, json=data, headers=headers)
+        return resp_data
+
+        
+    
+    
 
 
-    def register(self, sender_id):
+    def build_credetials_json(self, all_info):
+        
+        
+        appid = all_info["appid"]
+        android_id = all_info["androidId"]
+        security_token = all_info["securityToken"]
+        google_auth_token = all_info["authToken"]["token"]
+        refresh_token = all_info["refreshToken"]
+        version_info = all_info["versionInfo"]
+        name = all_info["name"]
+        fid = all_info["fid"]
+        fcmtoken = all_info["fcm"].replace("token=","")
+        publickey = all_info["public"]
+        privatekey = all_info["private"]
+        secretkey = all_info["secret"]
+        
+        
+        
+        processed_credentials = {
+                                    "gcm":{
+                                        "appId":appid,
+                                        "androidId":android_id,
+                                        "securityToken":security_token,
+                                        "versionInfo":version_info,            
+                                    },
+                                    "fcm":{
+                                        "token":fcmtoken,
+                                        "refreshToken":refresh_token,                                      
+                                    },
+                                    "auth_info":{
+                                        "versionInfo":version_info,
+                                        "googleAuthToken":google_auth_token,
+                                        "name":name,
+                                        "fid":fid,                                     
+                                    },
+                                    "keys":{
+                                        "public":publickey,
+                                        "private":privatekey,
+                                        "secret":secretkey, 
+                                    }
+
+            
+            
+        }
+      
+
+        return processed_credentials
+        
+        
+        
+
+
+    def register(self):
         """register gcm and fcm tokens for sender_id"""
-        app_id = "wp:receiver.push.com#{}".format(uuid.uuid4())
-        subscription = self.gcm_register(appId=app_id)
-        _LOGGER.debug(subscription)
-        fcm = self.fcm_register(sender_id=sender_id, token=subscription["token"])
-        _LOGGER.debug(fcm)
-        res = {"gcm": subscription}
-        res.update(fcm)
-        return res
+        app_id = "1:87969245803:ios:" + os.urandom(8).hex()
+        subscription = self.fcm_get_initial_auth_data(app_id=app_id)
+        credentials = self.fcm_get_token(fcm_auth_data=subscription)
+        return credentials
+
+
+
+
+
+
+
+#end of new fcm functions
+
+
+
 
 
 # -------------------------------------------------------------------------
@@ -403,6 +563,7 @@ class FCMListener:
         thread.Thread(target=self.__ping_scheduler, args=(google_socket,
                                                           credentials,
                                                           persistent_ids)).start()
+
         return google_socket
 
 
@@ -446,7 +607,7 @@ class FCMListener:
         while mythread == self.current_ping_thread:
             if self.awaiting_ack:
                 _LOGGER.debug(str(mythread) + ": Ping Timeout resetting")
-                self._restart_push_receiver(google_socket)
+                self._restart_push_receiver(google_socket=google_socket)
                 break
             if time.time() - self.time_of_last_receive > MAX_SILENT_INTERVAL_SECS:
                 _LOGGER.debug(str(mythread) + ": Sending PING now==========================")
@@ -455,9 +616,10 @@ class FCMListener:
                     self.__send_ping(google_socket=google_socket)
                 except:
                     _LOGGER.debug("Error with ping send %f")
-                    self._restart_push_receiver(google_socket)
+                    self._restart_push_receiver(google_socket=google_socket)
             time.sleep(60)
         _LOGGER.debug("Closing PING thread : " + str(mythread))
+
                 
                     
     def __send_ping(self, google_socket):
@@ -482,7 +644,13 @@ class FCMListener:
             total += sent
   
      
-    def __listen(self, credentials, callback, persistent_ids, obj):
+    def __listen(self, credentials, on_notify_callback, ids_callback, received_persistent_ids=None, obj=None):
+        
+        received_persistent_ids = []
+        if received_persistent_ids is None:
+            received_persistent_ids = []   
+        persistent_ids = received_persistent_ids
+        
         google_socket = self.__login(credentials, persistent_ids)
         self.listen_for_data_thread += 1
         mythread = self.listen_for_data_thread
@@ -490,7 +658,7 @@ class FCMListener:
             try:
                 data = self.__recv(google_socket)
                 if isinstance(data, DataMessageStanza):
-                    msg_id = self.__handle_data_message(data, credentials, callback, obj)
+                    msg_id = self.__handle_data_message(data, credentials, on_notify_callback, obj)
                     persistent_ids.append(msg_id)
                 elif isinstance(data, HeartbeatPing):
                     self.__handle_ping(google_socket)
@@ -545,32 +713,15 @@ class FCMListener:
         return data.persistent_id
    
 
-    def listen(self, credentials, callback, received_persistent_ids=None, obj=None):
-        """
-        listens for push notifications
-
-        credentials: credentials object returned by register()
-        callback(obj, notification, data_message): called on notifications
-        received_persistent_ids: any persistent id's you already received.
-                                array of strings
-        obj: optional arbitrary value passed to callback
-        """
-        received_persistent_ids = []
-        if received_persistent_ids is None:
-            received_persistent_ids = []
-
-        self.__listen(credentials, callback, received_persistent_ids, obj)
-
-
     def runner(self, callback, credentials = None, persistent_ids = None):
         """Registers a token and waits for notifications"""
         #_LOGGER.setLevel(logging.DEBUG)
-        self.ids_callback = callback
+        ids_callback = callback
         
         if persistent_ids is None:
             persistent_ids = []
         if credentials is None:
-            credentials = self.fcm_registration.register(sender_id=int(GCF_SENDER_ID))
+            credentials = self.fcm_registration.register()
             _credentials = {"credentials" : credentials}
             callback(_credentials) #doesn't do anything for now. Using a different method currently
 
@@ -585,5 +736,5 @@ class FCMListener:
             _notification = {"notification" : notification}
             callback(_notification)
             _LOGGER.debug(_notification)   
-                 
-        self.listen(credentials, on_notification, self.received_persistent_ids)
+         
+        self.__listen(credentials=credentials, on_notify_callback=on_notification, ids_callback=ids_callback, received_persistent_ids=self.received_persistent_ids)
