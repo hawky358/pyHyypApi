@@ -163,6 +163,11 @@ class FCMRegistration:
 
 
     def fcm_get_initial_auth_data(self, app_id, credentials = None, retries = 5):
+        """
+        get the google firebase auth key for the app. app_id is provided, second half being random (see def register())    
+
+        returns the firebase auth key and the supplied (generated) app_id
+        """
        
         data =  {
                 "appId":app_id,
@@ -183,6 +188,7 @@ class FCMRegistration:
 
 
     def fcm_get_token(self, fcm_auth_data):
+
         
         check_in = self.gcm_check_in() 
         firebase_installation_auth = fcm_auth_data["authToken"]["token"]
@@ -192,7 +198,6 @@ class FCMRegistration:
         security_token = check_in["securityToken"]
         versioninfo = check_in["versionInfo"]
       
-        
         public, private = generate_pair("ec", curve=str("secp256r1"))
         keys = {
             "public": self.urlsafe_base64(public.asn1.dump()[26:]),
@@ -200,14 +205,12 @@ class FCMRegistration:
             "secret": self.urlsafe_base64(os.urandom(16)),
         }
                 
-        
         headers = {
                 "x-goog-firebase-installations-auth":firebase_installation_auth,
                 "authorization":"AidLogin " + androidid + ":" + security_token,
                 "info":versioninfo
         }
-        
-        
+         
         data = {
             "device":androidid,
             "app":"com.hyyp247.home",
@@ -227,7 +230,6 @@ class FCMRegistration:
         res.update(check_in)
         res.update(fcm_auth_data)
         res.update(keys)
-        res = self.build_credetials_json(res)
         return res
 
     def fcm_subscribe(self, credentials):
@@ -284,29 +286,7 @@ class FCMRegistration:
                 "authorization":"AidLogin " + androidid + ":" + security_token,
         }
  
- 
-        data = urlencode(
-            {
-                "endpoint": "{}/{}".format(FCM_ENDPOINT, fcm_token),
-                "encryption_key": credentials["keys"]["public"],
-                "encryption_auth": credentials["keys"]["secret"],
-            }
-        )
-        
-        data = {
-                "endpoint": "{}/{}".format(FCM_ENDPOINT, fcm_token),
-                "p256dh": credentials["keys"]["public"],
-                "auth": credentials["keys"]["secret"],
-                }   
-        
-        
-        data = {"web":{
-                "endpoint": "{}/{}".format(FCM_ENDPOINT, fcm_token),
-                "p256dh": credentials["keys"]["public"],
-                "auth": credentials["keys"]["secret"],
-                }
-        }
-        
+         
         data = {"web":{
                 "endpoint": "{}/{}".format(FCM_ENDPOINT, fcm_token),
                 "p256dh": credentials["keys"]["public"],
@@ -314,14 +294,10 @@ class FCMRegistration:
                 }
         }    
            
-        #data = urlencode(data)
         
         url_full = FCM_V1_REGISTRATION_URL + "projects/" + str(GCF_SENDER_ID) + "/registrations"
         _LOGGER.debug(data)
         print("---")
-        #req = Request(url=url_full, data=data.encode("utf-8"), headers=headers)
-        #resp_data = self.__do_request(req, retries)
-        #resp_data = requests.post(url=url_full + "?" + data, headers=headers)
         resp_data = requests.post(url=url_full, json=data, headers=headers)
         return resp_data
 
@@ -370,8 +346,6 @@ class FCMRegistration:
                                         "private":privatekey,
                                         "secret":secretkey, 
                                     }
-
-            
             
         }
       
@@ -386,7 +360,9 @@ class FCMRegistration:
         """register gcm and fcm tokens for sender_id"""
         app_id = "1:87969245803:ios:" + os.urandom(8).hex()
         subscription = self.fcm_get_initial_auth_data(app_id=app_id)
-        credentials = self.fcm_get_token(fcm_auth_data=subscription)
+        credentials_unprocessed = self.fcm_get_token(fcm_auth_data=subscription)
+        credentials = self.build_credetials_json(credentials_unprocessed)
+        self.fcm_subscribe(credentials=credentials)
         return credentials
 
 
@@ -645,12 +621,11 @@ class FCMListener:
   
      
     def __listen(self, credentials, on_notify_callback, ids_callback, received_persistent_ids=None, obj=None):
-        
         received_persistent_ids = []
         if received_persistent_ids is None:
             received_persistent_ids = []   
         persistent_ids = received_persistent_ids
-        
+        self.fcm_registration.fcm_subscribe(credentials=credentials)
         google_socket = self.__login(credentials, persistent_ids)
         self.listen_for_data_thread += 1
         mythread = self.listen_for_data_thread
@@ -676,8 +651,7 @@ class FCMListener:
                 _LOGGER.debug("Other Listener Error")
                 self.listen_for_data_thread += 1
         _LOGGER.debug("Closing main thread" + str(mythread))
-                
-                
+                    
 
 
     def __handle_data_message(self, data, credentials, callback, obj):
