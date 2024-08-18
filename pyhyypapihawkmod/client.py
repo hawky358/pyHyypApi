@@ -7,13 +7,13 @@ from typing import Any
 import requests
 import threading as thread
 import time
-import os
 
 from .alarm_info import HyypAlarmInfos
 from .push_receiver import FCMListener, FCMRegistration
 from .constants import DEFAULT_TIMEOUT, REQUEST_HEADER, STD_PARAMS, DEBUG_CLIENT_STRING, PUSH_DELAY, GCF_SENDER_ID, IMEI_SEED, HyypPkg
 from .exceptions import HTTPError, HyypApiError, InvalidURL
 from .imei import ImeiGenerator
+from .common_tools import ClientTools
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -68,6 +68,8 @@ class HyypClient:
         self.fcm_listener = FCMListener()
         self.fcm_register = FCMRegistration()
         self.fcm_credentials = fcm_credentials
+        self.tools = ClientTools()
+        self.debug_fcm_notification_thread_count = 0
     
         
     def login(self) -> Any:
@@ -194,6 +196,7 @@ class HyypClient:
         return self.alarminfos.status(forced=forced)
 
     def initialize_fcm_notification_listener(self, callback, persistent_pids = None):
+        _LOGGER.warn("Init FCM Listener")
         if self.fcm_credentials is None:
             _LOGGER.warning("No FCM credentials available, disabling notifications")
             return
@@ -205,34 +208,40 @@ class HyypClient:
                               "callback" : callback
                               }).start()
        
-
-    def internet_connectivity(self):
-        _LOGGER.debug("Checking for connectivity")
-        reply = os.system('ping -c 1 www.google.com')
-        if reply == 0:
-            _LOGGER.debug("connectivity success")
-            return True
-        _LOGGER.debug("connectivity Failed")
-        return False
+   
 
     def fcm_notification_thread(self, callback, persistent_ids = None):
         #_LOGGER.setLevel(logging.DEBUG)
         gcm_address = self.fcm_credentials["fcm"]["token"]
-       
-        while not self.internet_connectivity():
-            time.sleep(60)
+        self.debug_fcm_notification_thread_count += 1
+        mythread = self.debug_fcm_notification_thread_count           
+        if not self.tools.internet_connectivity():
+            _LOGGER.warn(str(mythread) + ": No Internet, wait until internet then try again")
+            while not self.tools.internet_connectivity():
+                _LOGGER.warn(str(mythread) + ": No internet, sleeping")
+                time.sleep(60) 
+            callback("restart_push_receiver")
+            return
         time.sleep(60)
+        retry_count = 0
         while self.store_gcm_registrationid(gcm_id=gcm_address) == 0:
             time.sleep(30)
+            retry_count += 1
+            if retry_count >= 2:
+                _LOGGER.warn("Couldn't start FCM Notification thread")
+                callback("restart_push_receiver")
+                return
+        _LOGGER.warn(str(mythread) + ": Running Now")
         self.fcm_listener.runner(callback=callback,
                                  credentials=self.fcm_credentials,
                                  persistent_ids=persistent_ids)
 
 
     def get_intial_fcm_credentials(self):
+        if not self.tools.internet_connectivity():
+            return False
         return self.fcm_register.register(sender_id=GCF_SENDER_ID)
-        # error checker??
-
+        ## add some sort of validation
 
     def get_debug_infos(self) -> dict[Any, Any]:
         """Get alarm infos formatted for hass infos."""

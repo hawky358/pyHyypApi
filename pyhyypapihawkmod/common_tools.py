@@ -15,7 +15,10 @@ class ClientTools:
         
     def internet_connectivity(self):
         _LOGGER.debug("Checking for connectivity")
-        reply = requests.get('http://www.msftconnecttest.com/connecttest.txt')
+        try:
+            reply = requests.get('http://www.msftconnecttest.com/connecttest.txt')
+        except requests.exceptions.RequestException:
+            return False
         if reply.status_code != 200:
             return False
         if reply.text != "Microsoft Connect Test":

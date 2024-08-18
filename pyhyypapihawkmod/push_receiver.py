@@ -23,6 +23,9 @@ from google.protobuf.json_format import MessageToDict
 import http_ece
 from oscrypto.asymmetric import generate_pair
 
+
+
+from .common_tools import ClientTools
 from .android_checkin_pb2 import AndroidCheckinProto, ChromeBuildProto
 from .checkin_pb2 import AndroidCheckinRequest, AndroidCheckinResponse
 from .constants import GCF_SENDER_ID
@@ -400,6 +403,7 @@ class FCMListener:
         self.__send(google_socket, req)
         login_response = self.__recv(google_socket, first=True)
         _LOGGER.debug("Received login response: %s", login_response)
+        self.time_of_last_receive = time.time() + 60
         thread.Thread(target=self.__ping_scheduler, args=(google_socket,
                                                           credentials,
                                                           persistent_ids)).start()
@@ -434,6 +438,7 @@ class FCMListener:
         self.listen_for_data_thread += 1
         self._close_socket(google_socket)
         _LOGGER.debug("RESTARTING PUSH RECEIVER")
+        _LOGGER.warn("RESTARTING PUSH RECEIVER")
         self.ids_callback("restart_push_receiver")
         
 
@@ -456,8 +461,13 @@ class FCMListener:
                 except:
                     _LOGGER.debug("Error with ping send %f")
                     self._restart_push_receiver(google_socket)
+                    break
+            if not self._internet_connectivity():
+                _LOGGER.warn("No Internet : " + str(mythread))
+                self.awaiting_ack = True
             time.sleep(60)
         _LOGGER.debug("Closing PING thread : " + str(mythread))
+        _LOGGER.warn("Closing PING thread : " + str(mythread))
                 
                     
     def __send_ping(self, google_socket):
@@ -498,7 +508,6 @@ class FCMListener:
                     self.awaiting_ack = False
                 elif data is None or isinstance(data, Close):
                     self.listen_for_data_thread += 1
-                    #google_socket = self.__reset(google_socket, credentials, persistent_ids)
                 else:
                     _LOGGER.debug("Unexpected message type %s", type(data))
             except ConnectionResetError:
@@ -508,7 +517,8 @@ class FCMListener:
                 _LOGGER.debug("Other Listener Error")
                 self.listen_for_data_thread += 1
         _LOGGER.debug("Closing main thread" + str(mythread))
-                
+        _LOGGER.warn("Closing main thread" + str(mythread))
+        self._close_socket(google_socket=google_socket)    
                 
 
 
@@ -587,3 +597,6 @@ class FCMListener:
             _LOGGER.debug(_notification)   
                  
         self.listen(credentials, on_notification, self.received_persistent_ids)
+        
+    def _internet_connectivity(self):
+        return ClientTools().internet_connectivity()
