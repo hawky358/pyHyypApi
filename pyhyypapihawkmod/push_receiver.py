@@ -58,7 +58,7 @@ READ_TIMEOUT_SECS = 60 * 60
 MIN_RESET_INTERVAL_SECS = 60 * 5
 MAX_SILENT_INTERVAL_SECS = 60 * 15
 
-GOOGLE_APIKEY = "AIzaSyDH5H6kfGQEWm7FQSYfWYy8OAHPq__5Y6s"
+GOOGLE_FCM_PUBLIC_APIKEY = "AIzaSyDH5H6kfGQEWm7FQSYfWYy8OAHPq__5Y6s"
 
 MCS_VERSION = 41
 PACKET_BY_TAG = [
@@ -175,7 +175,7 @@ class FCMRegistration:
             }
         
         headers = {
-                "x-goog-api-key" : GOOGLE_APIKEY,        
+                "x-goog-api-key" : GOOGLE_FCM_PUBLIC_APIKEY,        
         }
        
         _LOGGER.debug(data)
@@ -281,7 +281,7 @@ class FCMRegistration:
  
  
         headers = {
-                "x-goog-api-key" : GOOGLE_APIKEY, 
+                "x-goog-api-key" : GOOGLE_FCM_PUBLIC_APIKEY, 
                 "x-goog-firebase-installations-auth":firebase_installation_auth,
                 "authorization":"AidLogin " + androidid + ":" + security_token,
         }
