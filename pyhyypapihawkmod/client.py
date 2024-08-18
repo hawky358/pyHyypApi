@@ -195,7 +195,7 @@ class HyypClient:
         forced = self.forced_refresh
         return self.alarminfos.status(forced=forced)
 
-    def initialize_fcm_notification_listener(self, callback, persistent_pids = None):
+    def initialize_fcm_notification_listener(self, callback, restart = False, persistent_pids = None):
         _LOGGER.warn("Init FCM Listener")
         if self.fcm_credentials is None:
             _LOGGER.warning("No FCM credentials available, disabling notifications")
@@ -205,13 +205,20 @@ class HyypClient:
             return
         thread.Thread(target=self.fcm_notification_thread,
                       kwargs={"persistent_ids" : persistent_pids,
-                              "callback" : callback
+                              "callback" : callback,
+                              "restart" : restart,
                               }).start()
        
    
 
-    def fcm_notification_thread(self, callback, persistent_ids = None):
+    def fcm_notification_thread(self, callback, restart, persistent_ids = None):
         #_LOGGER.setLevel(logging.DEBUG)
+        if not restart:
+            if not self.tools.internet_connectivity():
+                _LOGGER.warn("No initial internet, returning and waitng for HASS to ask again")
+                return
+        
+        _LOGGER.warn("Restart or internet available, waiting")    
         gcm_address = self.fcm_credentials["fcm"]["token"]
         self.debug_fcm_notification_thread_count += 1
         mythread = self.debug_fcm_notification_thread_count           
@@ -223,6 +230,7 @@ class HyypClient:
             callback("restart_push_receiver")
             return
         time.sleep(60)
+        
         retry_count = 0
         while self.store_gcm_registrationid(gcm_id=gcm_address) == 0:
             time.sleep(30)
