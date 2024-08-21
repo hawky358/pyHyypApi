@@ -69,7 +69,6 @@ class HyypClient:
         self.fcm_register = FCMRegistration()
         self.fcm_credentials = fcm_credentials
         self.tools = ClientTools()
-        self.debug_fcm_notification_thread_count = 0
     
         
     def login(self) -> Any:
@@ -196,7 +195,6 @@ class HyypClient:
         return self.alarminfos.status(forced=forced)
 
     def initialize_fcm_notification_listener(self, callback, restart = False, persistent_pids = None):
-        _LOGGER.warn("Init FCM Listener")
         if self.fcm_credentials is None:
             _LOGGER.warning("No FCM credentials available, disabling notifications")
             return
@@ -215,17 +213,11 @@ class HyypClient:
         #_LOGGER.setLevel(logging.DEBUG)
         if not restart:
             if not self.tools.internet_connectivity():
-                _LOGGER.warn("No initial internet, returning and waitng for HASS to ask again")
                 return
         
-        _LOGGER.warn("Restart or internet available, waiting")    
-        gcm_address = self.fcm_credentials["fcm"]["token"]
-        self.debug_fcm_notification_thread_count += 1
-        mythread = self.debug_fcm_notification_thread_count           
+        gcm_address = self.fcm_credentials["fcm"]["token"]  
         if not self.tools.internet_connectivity():
-            _LOGGER.warn(str(mythread) + ": No Internet, wait until internet then try again")
             while not self.tools.internet_connectivity():
-                _LOGGER.warn(str(mythread) + ": No internet, sleeping")
                 time.sleep(60) 
             callback("restart_push_receiver")
             return
@@ -236,10 +228,8 @@ class HyypClient:
             time.sleep(30)
             retry_count += 1
             if retry_count >= 2:
-                _LOGGER.warn("Couldn't start FCM Notification thread")
                 callback("restart_push_receiver")
                 return
-        _LOGGER.warn(str(mythread) + ": Running Now")
         self.fcm_listener.runner(callback=callback,
                                  credentials=self.fcm_credentials,
                                  persistent_ids=persistent_ids)

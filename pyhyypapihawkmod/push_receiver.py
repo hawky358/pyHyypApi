@@ -438,7 +438,6 @@ class FCMListener:
         self.listen_for_data_thread += 1
         self._close_socket(google_socket)
         _LOGGER.debug("RESTARTING PUSH RECEIVER")
-        _LOGGER.warn("RESTARTING PUSH RECEIVER")
         self.ids_callback("restart_push_receiver")
         
 
@@ -463,11 +462,9 @@ class FCMListener:
                     self._restart_push_receiver(google_socket)
                     break
             if not self._internet_connectivity():
-                _LOGGER.warn("No Internet : " + str(mythread))
                 self.awaiting_ack = True
             time.sleep(60)
         _LOGGER.debug("Closing PING thread : " + str(mythread))
-        _LOGGER.warn("Closing PING thread : " + str(mythread))
                 
                     
     def __send_ping(self, google_socket):
@@ -517,7 +514,6 @@ class FCMListener:
                 _LOGGER.debug("Other Listener Error")
                 self.listen_for_data_thread += 1
         _LOGGER.debug("Closing main thread" + str(mythread))
-        _LOGGER.warn("Closing main thread" + str(mythread))
         self._close_socket(google_socket=google_socket)    
                 
 
