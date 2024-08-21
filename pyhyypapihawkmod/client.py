@@ -216,12 +216,15 @@ class HyypClient:
                 return
         
         gcm_address = self.fcm_credentials["fcm"]["token"]  
+        if restart:
+            time.sleep(60)
         if not self.tools.internet_connectivity():
             while not self.tools.internet_connectivity():
                 time.sleep(60) 
             callback("restart_push_receiver")
             return
-        time.sleep(60)
+        time.sleep(2)
+
         
         retry_count = 0
         while self.store_gcm_registrationid(gcm_id=gcm_address) == 0:
@@ -230,6 +233,7 @@ class HyypClient:
             if retry_count >= 2:
                 callback("restart_push_receiver")
                 return
+        time.sleep(60)
         self.fcm_listener.runner(callback=callback,
                                  credentials=self.fcm_credentials,
                                  persistent_ids=persistent_ids)

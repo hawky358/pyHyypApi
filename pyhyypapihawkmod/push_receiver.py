@@ -632,6 +632,7 @@ class FCMListener:
         if received_persistent_ids is None:
             received_persistent_ids = []   
         persistent_ids = received_persistent_ids
+        self.ids_callback = ids_callback
         self.fcm_registration.fcm_subscribe(credentials=credentials)
         google_socket = self.__login(credentials, persistent_ids)
         self.listen_for_data_thread += 1

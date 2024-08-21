@@ -12,7 +12,7 @@ API for ADT Secure Home and IDS Hyyp. There could be more variants but it's easy
 
 Changelog 
 
-1.4.0b6
+1.4.0b7
 - Reworked the reconnect system for push notifications.
 
 1.4.0b1
