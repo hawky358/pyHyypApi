@@ -12,6 +12,9 @@ API for ADT Secure Home and IDS Hyyp. There could be more variants but it's easy
 
 Changelog 
 
+1.4.0b6
+- Reworked the reconnect system for push notifications.
+
 1.4.0b1
 - Updated the FCM api to the v1 API. (Still testing)
 
