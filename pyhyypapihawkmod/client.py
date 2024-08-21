@@ -10,7 +10,7 @@ import time
 
 from .alarm_info import HyypAlarmInfos
 from .push_receiver import FCMListener, FCMRegistration
-from .constants import DEFAULT_TIMEOUT, REQUEST_HEADER, STD_PARAMS, DEBUG_CLIENT_STRING, PUSH_DELAY, GCF_SENDER_ID, IMEI_SEED, HyypPkg
+from .constants import DEFAULT_TIMEOUT, REQUEST_HEADER, STD_PARAMS, DEBUG_CLIENT_STRING, PUSH_DELAY, IMEI_SEED, HyypPkg
 from .exceptions import HTTPError, HyypApiError, InvalidURL
 from .imei import ImeiGenerator
 from .common_tools import ClientTools
