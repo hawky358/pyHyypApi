@@ -5,12 +5,14 @@ This is a fork from https://github.com/RenierM26. This fork has reversed enginee
 
 # pyHyypApi
 
-**Note** this Api is built to work with the IDS Hyyp integration for home assistant.
+**Note** this Api is built to work with the IDS Hyyp integration for home assistant.  No usage instruction is currently provided.
 
 API for ADT Secure Home and IDS Hyyp. There could be more variants but it's easy to add package names to the constants.py file.
 
 
 Changelog 
+1.4.1
+- Version bump for release
 
 1.4.0b7
 - Reworked the reconnect system for push notifications.
