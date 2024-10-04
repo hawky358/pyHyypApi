@@ -37,6 +37,7 @@ API_ENDPOINT_SET_NOTIFICATION_SUBSCRIPTIONS = "/user/setNotificationSubscription
 API_ENDPOINT_TRIGGER_AUTOMATION = "/device/trigger"
 API_ENDPOINT_GET_ZONE_STATE_INFO = "/device/getZoneStateInfo"
 REQUEST_PUSH_TIMEOUT = 1.5
+FAILURE_CAUSE_STRING = "failure_cause"
 class HyypClient:
     """Initialize api client object."""
 
@@ -815,39 +816,38 @@ class HyypClient:
         pin: int | None = None,
         stay_profile_id: int | None = None
     ):
-        FAILURE_CAUSE_STRING = 'FAILURE CAUSE'
+        
         
         if not pin:
-            failure_info = {FAILURE_CAUSE_STRING : 'NO PIN'}
+            failure_info = {FAILURE_CAUSE_STRING : "NO PIN"}
             return failure_info        
-        #ruan
         if not self.current_status:
             self.load_alarm_infos()
         zone_states = self.get_zone_state_info(site_id=site_id)       
         failed_zones = {}
-        for zone_id_in_current_arm in self.current_status[site_id]['partitions'][partition_id]["zones"]:
+        for zone_id_in_current_arm in self.current_status[site_id]["partitions"][partition_id]["zones"]:
             if zone_states is None:
                 break
             if "zones" not in zone_states:
                 break
             for zone_state in zone_states["zones"]:
-                if self.current_status[site_id]['partitions'][partition_id]["zones"][zone_id_in_current_arm]['number'] != zone_state['number']:
+                if self.current_status[site_id]["partitions"][partition_id]["zones"][zone_id_in_current_arm]['number'] != zone_state['number']:
                     continue
-                if zone_state['bypassed']:
+                if zone_state["bypassed"]:
                     break
-                if not zone_state['openViolated'] and not zone_state['tampered'] :
+                if not zone_state["openViolated"] and not zone_state["tampered"] :
                     break
                 if stay_profile_id:
-                    if zone_id_in_current_arm in self.current_status[site_id]['partitions'][partition_id]['stayProfiles'][stay_profile_id]['zoneIds']:
+                    if zone_id_in_current_arm in self.current_status[site_id]["partitions"][partition_id]["stayProfiles"][stay_profile_id]["zoneIds"]:
                         break
-                failed_zones[zone_state['number']] = self.current_status[site_id]['partitions'][partition_id]["zones"][zone_id_in_current_arm]['name']
+                failed_zones[zone_state["number"]] = self.current_status[site_id]["partitions"][partition_id]["zones"][zone_id_in_current_arm]["name"]
                 break
         if failed_zones:
-            failure_info = {FAILURE_CAUSE_STRING : 'VIOLATED ZONES',
-                            "ZONES" : failed_zones
+            failure_info = {FAILURE_CAUSE_STRING : "VIOLATED ZONES",
+                            "zones" : failed_zones
                             }
             return failure_info
-        return 0
+        return {FAILURE_CAUSE_STRING : 0}
                 
                         
     def arm_site(
@@ -906,7 +906,7 @@ class HyypClient:
             raise HyypApiError(f"Arm site failed: {_json_result['error']}")
             
         if self.generic_callback_to_hass:
-            self.generic_callback_to_hass({"arm_fail_cause" : 0})
+            self.generic_callback_to_hass({"arm_fail_cause" : {FAILURE_CAUSE_STRING : 0}})
         return _json_result
         
         
