@@ -11,6 +11,9 @@ API for ADT Secure Home and IDS Hyyp. There could be more variants but it's easy
 
 
 Changelog 
+1.5.0b1
+- Added ability to determine cause for arm failure
+
 1.4.1
 - Version bump for release
 
