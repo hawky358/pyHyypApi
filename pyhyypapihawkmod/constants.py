@@ -12,12 +12,11 @@ REQUEST_HEADER = {
 IMEI_SEED = "15241971"
 STD_PARAMS = {
     "imei": None,  # Alphabet soup starts at 0
-    "appVersionCode": "401",
-    "_appVersionCode": "401",
+    "appVersionCode": "428",
+    "_appVersionCode": "428",
     "deviceOS": "12.0",
     "deviceName": "Python API",
     "pkg": "za.co.adt.securehome.android",
-    "_appVersionName": "3.5.19",
     "token": None,
     "userId": None,
 }  # Standard request parameters.

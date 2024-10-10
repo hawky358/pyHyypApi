@@ -217,7 +217,7 @@ class FCMRegistration:
         data = {
             "device":androidid,
             "app":"com.hyyp247.home",
-            "app_ver":"4.2.2",
+            "app_ver":"4.2.8",
             "X-cliv":"fiid-8.10.0",
             "sender":GCF_SENDER_ID,
             "X-subtype":GCF_SENDER_ID,
@@ -253,7 +253,7 @@ class FCMRegistration:
         data = {
             "device":androidid,
             "app":"com.hyyp247.home",
-            "app_ver":"4.2.2",
+            "app_ver":"4.2.8",
             "X-cliv":"fiid-8.10.0",
             "sender":GCF_SENDER_ID,
             "X-subtype":GCF_SENDER_ID,
@@ -276,7 +276,6 @@ class FCMRegistration:
 # I am keeping the code to not lose the work I put in
 
     def fcm_register_with_v1_api(self, credentials, retries = 5):  
-        print("using v1 api")
         firebase_installation_auth = credentials["auth_info"]["googleAuthToken"]
         androidid = credentials["gcm"]["androidId"]
         security_token = credentials["gcm"]["securityToken"]
@@ -300,7 +299,6 @@ class FCMRegistration:
         
         url_full = FCM_V1_REGISTRATION_URL + "projects/" + str(GCF_SENDER_ID) + "/registrations"
         _LOGGER.debug(data)
-        print("---")
         resp_data = requests.post(url=url_full, json=data, headers=headers)
         return resp_data
 

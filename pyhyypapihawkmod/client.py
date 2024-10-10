@@ -657,8 +657,9 @@ class HyypClient:
         """Store gcmid."""
         _params = STD_PARAMS.copy()
         _params["gcmId"] = gcm_id
-        del _params["imei"]
         _params["clientImei"] = STD_PARAMS["imei"]
+        _params["requestingUserId"] = STD_PARAMS["userId"]
+        
         try:
             req = self._session.post(
                 "https://" + BASE_URL + API_ENDPOINT_STORE_GCM_REGISTRATION_ID,
@@ -806,47 +807,7 @@ class HyypClient:
 
         return _json_result
 
-
-    def pre_arm_check(
-        self,        
-        site_id: int,
-        partition_id: int,
-        pin: int | None = None,
-        stay_profile_id: int | None = None
-    ):
-        
-        
-        if not pin:
-            failure_info = {FAILURE_CAUSE_STRING : "NO PIN"}
-            return failure_info        
-        if not self.current_status:
-            self.load_alarm_infos()
-        zone_states = self.get_zone_state_info(site_id=site_id)       
-        failed_zones = {}
-        for zone_id_in_current_arm in self.current_status[site_id]["partitions"][partition_id]["zones"]:
-            if zone_states is None:
-                break
-            if "zones" not in zone_states:
-                break
-            for zone_state in zone_states["zones"]:
-                if self.current_status[site_id]["partitions"][partition_id]["zones"][zone_id_in_current_arm]['number'] != zone_state['number']:
-                    continue
-                if zone_state["bypassed"]:
-                    break
-                if not zone_state["openViolated"] and not zone_state["tampered"] :
-                    break
-                if stay_profile_id:
-                    if zone_id_in_current_arm in self.current_status[site_id]["partitions"][partition_id]["stayProfiles"][stay_profile_id]["zoneIds"]:
-                        break
-                failed_zones[zone_state["number"]] = self.current_status[site_id]["partitions"][partition_id]["zones"][zone_id_in_current_arm]["name"]
-                break
-        if failed_zones:
-            failure_info = {FAILURE_CAUSE_STRING : "VIOLATED ZONES",
-                            "zones" : failed_zones
-                            }
-            return failure_info
-        return {FAILURE_CAUSE_STRING : 0}
-                
+               
                         
     def arm_site(
         self,
@@ -864,12 +825,8 @@ class HyypClient:
         _params["partitionId"] = partition_id
         _params["siteId"] = site_id
         _params["stayProfileId"] = stay_profile_id
-        del _params["imei"]
         _params["clientImei"] = STD_PARAMS["imei"]
         
-        if arm:
-            pre_check = self.pre_arm_check(site_id=site_id, partition_id=partition_id, pin=pin, stay_profile_id=stay_profile_id)
-            pre_check = {"arm_fail_cause" : pre_check}
             
         try:
             req = self._session.get(
@@ -899,12 +856,8 @@ class HyypClient:
             ) from err
 
         if _json_result["status"] != "SUCCESS":  
-            if self.generic_callback_to_hass and arm:
-                self.generic_callback_to_hass(data=pre_check)
             raise HyypApiError(f"Arm site failed: {_json_result['error']}")
-            
-        if self.generic_callback_to_hass:
-            self.generic_callback_to_hass({"arm_fail_cause" : {FAILURE_CAUSE_STRING : 0}})
+
         return _json_result
         
         
@@ -925,7 +878,6 @@ class HyypClient:
         _params["partitionId"] = partition_id
         _params["siteId"] = site_id
         _params["triggerId"] = trigger_id
-        del _params["imei"]
         _params["clientImei"] = STD_PARAMS["imei"]
 
         try:
@@ -1023,7 +975,6 @@ class HyypClient:
         _params["zones"] = zones
         _params["stayProfileId"] = stay_profile_id
         _params["pin"] = pin
-        del _params["imei"]
         _params["clientImei"] = STD_PARAMS["imei"]
         
         try:
