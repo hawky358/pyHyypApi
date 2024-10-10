@@ -361,7 +361,8 @@ class FCMRegistration:
 
     def register(self):
         """register gcm and fcm tokens for sender_id"""
-        app_id = "1:87969245803:ios:" + os.urandom(8).hex()
+        #app_id = "1:87969245803:ios:" + os.urandom(8).hex()
+        app_id = "1:87969245803:android:100fe8e62b328f50"
         subscription = self.fcm_get_initial_auth_data(app_id=app_id)
         credentials_unprocessed = self.fcm_get_token(fcm_auth_data=subscription)
         credentials = self.build_credetials_json(credentials_unprocessed)
@@ -694,6 +695,12 @@ class FCMListener:
         callback(obj, json.loads(decrypted.decode("utf-8")), data)
         return data.persistent_id
    
+   
+   
+    def debug_threaded_runner(self, callback, credentials = None, persistent_ids = None):
+        thread.Thread(target=self.runner, args=(callback,
+                                                credentials,
+                                                persistent_ids)).start()
 
     def runner(self, callback, credentials = None, persistent_ids = None):
         """Registers a token and waits for notifications"""

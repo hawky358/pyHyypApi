@@ -49,8 +49,6 @@ class HyypClient:
         timeout: int = DEFAULT_TIMEOUT,
         token: str | None = None,
         userid: int | None = None,
-        fcm_credentials: None = None,
-        imei: str | None = None
     ) -> None:
         """Initialize the client object."""
         self._email = email
@@ -60,14 +58,14 @@ class HyypClient:
         STD_PARAMS["pkg"] = pkg
         STD_PARAMS["token"] = token
         STD_PARAMS["userId"] = userid
-        STD_PARAMS["imei"] = imei
+        STD_PARAMS["imei"] = self.generate_imei()
         self._timeout = timeout
         self.time_to_push = PUSH_DELAY
         self.forced_refresh = False
         self.alarminfos = HyypAlarmInfos(self)
         self.fcm_listener = FCMListener()
         self.fcm_register = FCMRegistration()
-        self.fcm_credentials = fcm_credentials
+        self.fcm_credentials = None
         self.current_status = None
         self.tools = ClientTools()
         self.generic_callback_to_hass = None
@@ -76,10 +74,6 @@ class HyypClient:
     def login(self) -> Any:
         """Login to ADT Secure Home API."""
 
-        if STD_PARAMS["imei"] is None:
-            _LOGGER.warning("No IMEI found, this warning should not be seen in home assistant.")
-            STD_PARAMS["imei"] = self.generate_imei()
-            _LOGGER.warning("Generated session IMEI " + str(STD_PARAMS["imei"]))
             
         _params = STD_PARAMS.copy()
         _params["email"] = self._email
@@ -198,12 +192,6 @@ class HyypClient:
         return self.current_status
 
     def initialize_fcm_notification_listener(self, callback, restart = False, persistent_pids = None):
-        if self.fcm_credentials is None:
-            _LOGGER.warning("No FCM credentials available, disabling notifications")
-            return
-        if "fcm" not in self.fcm_credentials:
-            _LOGGER.warning("No FCM credentials available, disabling notifications")
-            return
         thread.Thread(target=self.fcm_notification_thread,
                       kwargs={"persistent_ids" : persistent_pids,
                               "callback" : callback,
@@ -219,6 +207,14 @@ class HyypClient:
         if not restart:
             if not self.tools.internet_connectivity():
                 return
+        self.fcm_credentials = self.get_intial_fcm_credentials()
+        if self.fcm_credentials is None:
+            _LOGGER.warning("No FCM credentials available, disabling notifications")
+            return
+        if "fcm" not in self.fcm_credentials:
+            _LOGGER.warning("No FCM credentials available, disabling notifications")
+            return
+        
         
         gcm_address = self.fcm_credentials["fcm"]["token"]  
         if restart:
@@ -444,7 +440,9 @@ class HyypClient:
     def get_sync_info(self, json_key: str | None = None) -> Any:
         """Get user, site, partition and users info from API."""
 
-        _params = STD_PARAMS
+        _params = STD_PARAMS.copy()
+        if self.fcm_credentials is not None:
+            _params["gcmId"] = self.fcm_credentials["fcm"]["token"] 
 
         try:
             req = self._session.get(
