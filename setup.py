@@ -23,7 +23,7 @@ setuptools.setup(
         'oscrypto',
         'protobuf',
         'http-ece',
-        'firebase_messaging==0.4.4'
+        'firebase_messaging==0.4.4',
         'appdirs'
     ],
     python_requires = '>=3.6'
