@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 from datetime import datetime
 import time
-from .constants import EventNumber, STD_PARAMS, DEBUG_CLIENT_STRING
+from .constants import EventNumber, STD_PARAMS
 import logging
 import threading as thread
 
@@ -263,48 +263,4 @@ class HyypAlarmInfos:
 
 
 
-    def debug_thread(self):
-        while 1:
-        
-            _LOGGER.setLevel(logging.DEBUG)
-            time.sleep(1.5)
-            syncinfo = self._client.get_sync_info()
-            time.sleep(1)
-            stateinfo = self._client.get_state_info()
-            time.sleep(2)
-            notificationinfo = {}
-            zoneinfo = {}
-            for site in syncinfo["sites"]:  
-                siteid = site["id"]
-                time.sleep(2)
-                cur_site_notificationinfo = self._client.site_notifications(site_id=siteid)
-                notificationinfo[siteid] = cur_site_notificationinfo
-                time.sleep(2)
-                cur_site_zoneinfo = self._client.get_zone_state_info(site_id=siteid)
-                zoneinfo[siteid] = cur_site_zoneinfo
-                
-            
-            message = {"client_string" : DEBUG_CLIENT_STRING["client_string"],
-                       "syncinfo" : syncinfo,
-                       "Stateinfo" : stateinfo,
-                       "notifications" : notificationinfo,
-                       "zoneinfo" : zoneinfo,
-                       }
-            
-            _LOGGER.debug('------------------------------')
-            _LOGGER.debug('--------Start of debug--------')
-            
-            _LOGGER.debug(message)
-            
-            _LOGGER.debug('--------End of debug--------')
-            _LOGGER.debug('-----------------------------')
-            time.sleep(30)
-    
-
-
-    def get_debug_info(self) -> dict[Any, Any]:
-        """Pull notifications for debug purposes."""
-        # The API returns data from site level.
-        thread.Thread(target=self.debug_thread).start()
-        
     

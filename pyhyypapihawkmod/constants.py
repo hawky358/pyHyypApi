@@ -1,13 +1,25 @@
 """Hyyp API constants."""
 from enum import Enum
 
+
+
+
+
 PUSH_DELAY = 30
 DEFAULT_TIMEOUT = 25
 MAX_RETRIES = 3
-GCF_SENDER_ID = 87969245803
 REQUEST_HEADER = {
     "User-Agent": "okhttp/3.12.1",
 }  # Standard android header.
+
+class HyypPkg(Enum):
+    """Supported hyyp skins/rebranding."""
+
+    ADT_SECURE_HOME = "za.co.adt.securehome.android"
+    IDS_HYYP_GENERIC = "com.hyyp247.home"
+
+
+
 
 IMEI_SEED = "15241971"
 STD_PARAMS = {
@@ -21,9 +33,23 @@ STD_PARAMS = {
     "userId": None,
 }  # Standard request parameters.
 
-DEBUG_CLIENT_STRING = {
-    "client_string" : None
-}
+
+#push Notification stuff
+
+
+GCF_SENDER_ID = 87969245803
+FCM_PUBLIC_APIKEY = "AIzaSyDH5H6kfGQEWm7FQSYfWYy8OAHPq__5Y6s"
+FCM_APP_ID = "1:87969245803:android:100fe8e62b328f50"
+FCM_PROJECT_ID = "hyyp-49b11"
+
+
+
+# GCF_SENDER_ID = 1058367115687
+# FCM_PUBLIC_APIKEY = "AIzaSyCfXAQkEqeC0XzhCHuA9VF8Lb0rtmfEFJI"
+# FCM_APP_ID = "1:1058367115687:android:fde7cedaf8d7af8d42a682"
+# FCM_PROJECT_ID = "test-project-46a63"
+
+
 
 # Rpc to name mapping. Used in push notifications.
 RpcCodes = {
@@ -43,11 +69,6 @@ RpcCodes = {
 EventCategory = {"1": "Emergency", "2": "User", "3": "Trouble", "4": "Information"}
 
 
-class HyypPkg(Enum):
-    """Supported hyyp skins/rebranding."""
-
-    ADT_SECURE_HOME = "za.co.adt.securehome.android"
-    IDS_HYYP_GENERIC = "com.hyyp247.home"
 
 
 # EventNumber to name mapping.

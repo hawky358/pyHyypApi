@@ -11,6 +11,10 @@ API for ADT Secure Home and IDS Hyyp. There could be more variants but it's easy
 
 
 Changelog 
+
+1.5.1b1
+- Reworked FCM system, now using [firebase messaging](https://github.com/sdb9696/firebase-messaging) as the main handler for FCM communication with google.
+
 1.5.0b1
 - Added ability to determine cause for arm failure
 
