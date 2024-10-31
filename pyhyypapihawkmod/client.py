@@ -10,6 +10,7 @@ import time
 import asyncio
 from firebase_messaging import FcmPushClient, FcmRegisterConfig
 
+
 from .alarm_info import HyypAlarmInfos
 from .constants import DEFAULT_TIMEOUT, REQUEST_HEADER, STD_PARAMS, PUSH_DELAY, IMEI_SEED, HyypPkg, FCM_PROJECT_ID, FCM_APP_ID, FCM_PUBLIC_APIKEY, GCF_SENDER_ID
 from .exceptions import HTTPError, HyypApiError, InvalidURL
@@ -39,6 +40,8 @@ API_ENDPOINT_TRIGGER_AUTOMATION = "/device/trigger"
 API_ENDPOINT_GET_ZONE_STATE_INFO = "/device/getZoneStateInfo"
 REQUEST_PUSH_TIMEOUT = 1.5
 FAILURE_CAUSE_STRING = "failure_cause"
+
+current_fcm_thread = None
 class HyypClient:
     """Initialize api client object."""
 
@@ -70,6 +73,7 @@ class HyypClient:
         self.current_status = None   #<<<<<<<<<<<<<<<<<?
         self.tools = ClientTools()
         self.generic_callback_to_hass = None
+        self.current_fcm_thread = None
     
         
     def login(self) -> Any:
@@ -201,6 +205,7 @@ class HyypClient:
 
     def initialize_fcm_notification_listener(self, restart = False, persistent_pids = None):
         thread.Thread(target=asyncio.run, args=(self.fcm_notification_thread(persistent_ids=persistent_pids, restart=restart),)).start()
+        # asyncio.run(self.fcm_notification_thread(persistent_ids=persistent_pids, restart=restart))
         
     async def fcm_notification_thread(self, restart, persistent_ids):
         #_LOGGER.setLevel(logging.DEBUG)
@@ -237,6 +242,10 @@ class HyypClient:
                 return
        
     async def fcm_laucher(self, persistent_ids):
+        
+        global current_fcm_thread
+        current_fcm_thread = time.time()
+        mythread = current_fcm_thread
         fcm_config = FcmRegisterConfig(project_id=FCM_PROJECT_ID,
                                        app_id=FCM_APP_ID,
                                        api_key=FCM_PUBLIC_APIKEY,
@@ -246,20 +255,21 @@ class HyypClient:
                                    fcm_config=fcm_config,
                                    credentials=self.fcm_credentials,
                                    credentials_updated_callback=self.fcm_new_credentials_callback)
+        
         time.sleep(30)
+        
+        if not mythread == current_fcm_thread:
+            return
         
         if self.fcm_credentials is not None:
             self.send_gcm_to_ids()
         
         await fcm_client.checkin_or_register()
- 
         await fcm_client.start()
-        _LOGGER.warning("FCM Startup Complete")
-        while True:
-            await asyncio.sleep(2)        
-       
-        
-    
+        while mythread == current_fcm_thread:
+            await asyncio.sleep(2)         
+        await fcm_client.stop()            
+ 
     def fcm_new_notification_callback(self, obj, persistent_id, message):
         
         if persistent_id:

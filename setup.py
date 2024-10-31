@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name='pyhyypapihawkmod',
-    version="1.5.1b1",
+    version="1.5.1b2",
     license='Apache Software License 2.0',
     author='hawky358',
     author_email='hawky358@users.github.com',
