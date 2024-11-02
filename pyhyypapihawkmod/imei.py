@@ -1,12 +1,9 @@
 """
 Generates random IMEI numbers.
 
-The user specifies the 8-digit TAC and up to 4-digits of the serial number.
-The user also specifies the number of random IMEIs to generate.
+
 """
 import random
-from .constants import STD_PARAMS
-
 
 class ImeiGenerator():
 
@@ -37,25 +34,9 @@ class ImeiGenerator():
         return alphabet[-check_digit]
 
 
-    def generate_imei(self, start = None):
-        """Ask for the base IMEI, how many to generate, then generate them."""
-        # Loop until the first 8-12 digits have been received & are valid
-        if start is None:
-            start = STD_PARAMS["imei"]
-        # Loop until we know how many random numbers to generate
-
-        # IMEIs will be generated based on the first 8 digits (TAC; the number
-        #   used to identify the model) and the next 2-6 digits (partial serial #).
-        #   The final, 15th digit, is the Luhn algorithm check digit.
-        # Generate and print random IMEI numbers
-
-        imei = start
-
-            # Randomly compute the remaining serial number digits
+    def generate_imei(self):
+        imei = ""
         while len(imei) < 14:
-            imei += str(random.randint(0, 9))
-
-            # Calculate the check digit with the Luhn algorithm
-            imei += self.calc_check_digit(imei)
-
+            imei += str(random.randint(0, 9))     
+        imei += self.calc_check_digit(imei)
         return imei

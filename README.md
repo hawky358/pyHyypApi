@@ -12,6 +12,12 @@ API for ADT Secure Home and IDS Hyyp. There could be more variants but it's easy
 
 Changelog 
 
+1.5.1b3
+- Various improvements to the error handling of the new FCM system to allow for cleaner reconnects and renewal of credentials.
+
+1.5.1b2
+- Changed imei generation to increase randomness
+
 1.5.1b1
 - Reworked FCM system, now using [firebase messaging](https://github.com/sdb9696/firebase-messaging) as the main handler for FCM communication with google.
 

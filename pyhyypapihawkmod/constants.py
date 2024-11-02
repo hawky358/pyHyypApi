@@ -18,12 +18,8 @@ class HyypPkg(Enum):
     ADT_SECURE_HOME = "za.co.adt.securehome.android"
     IDS_HYYP_GENERIC = "com.hyyp247.home"
 
-
-
-
-IMEI_SEED = "15241971"
 STD_PARAMS = {
-    "imei": None,  # Alphabet soup starts at 0
+    "imei": None,  
     "appVersionCode": "428",
     "_appVersionCode": "428",
     "deviceOS": "12.0",
@@ -44,12 +40,12 @@ FCM_PROJECT_ID = "hyyp-49b11"
 
 
 
-# GCF_SENDER_ID = 1058367115687
-# FCM_PUBLIC_APIKEY = "AIzaSyCfXAQkEqeC0XzhCHuA9VF8Lb0rtmfEFJI"
-# FCM_APP_ID = "1:1058367115687:android:fde7cedaf8d7af8d42a682"
-# FCM_PROJECT_ID = "test-project-46a63"
+#FCM callback constants
 
-
+HASS_CALLBACK_KEY_RESTART_FCM = "restart_push_receiver"
+HASS_CALLBACK_KEY_NEW_PID = "new_PID"
+HASS_CALLBACK_KEY_FCM_DATA = "fcm_data"
+HASS_CALLBACK_KEY_FCM_CREDENTIALS = "fcm_credentials"
 
 # Rpc to name mapping. Used in push notifications.
 RpcCodes = {

@@ -8,11 +8,23 @@ import requests
 import threading as thread
 import time
 import asyncio
-from firebase_messaging import FcmPushClient, FcmRegisterConfig
-
+from firebase_messaging import FcmPushClient, FcmRegisterConfig, FcmPushClientRunState
 
 from .alarm_info import HyypAlarmInfos
-from .constants import DEFAULT_TIMEOUT, REQUEST_HEADER, STD_PARAMS, PUSH_DELAY, IMEI_SEED, HyypPkg, FCM_PROJECT_ID, FCM_APP_ID, FCM_PUBLIC_APIKEY, GCF_SENDER_ID
+from .constants import (DEFAULT_TIMEOUT,
+                        REQUEST_HEADER,
+                        STD_PARAMS,
+                        PUSH_DELAY,
+                        HyypPkg,
+                        FCM_PROJECT_ID,
+                        FCM_APP_ID,
+                        FCM_PUBLIC_APIKEY,
+                        GCF_SENDER_ID,
+                        HASS_CALLBACK_KEY_RESTART_FCM,
+                        HASS_CALLBACK_KEY_NEW_PID,
+                        HASS_CALLBACK_KEY_FCM_DATA,
+                        HASS_CALLBACK_KEY_FCM_CREDENTIALS,
+                        )
 from .exceptions import HTTPError, HyypApiError, InvalidURL
 from .imei import ImeiGenerator
 from .common_tools import ClientTools
@@ -39,9 +51,11 @@ API_ENDPOINT_SET_NOTIFICATION_SUBSCRIPTIONS = "/user/setNotificationSubscription
 API_ENDPOINT_TRIGGER_AUTOMATION = "/device/trigger"
 API_ENDPOINT_GET_ZONE_STATE_INFO = "/device/getZoneStateInfo"
 REQUEST_PUSH_TIMEOUT = 1.5
-FAILURE_CAUSE_STRING = "failure_cause"
+
+
 
 current_fcm_thread = None
+
 class HyypClient:
     """Initialize api client object."""
 
@@ -54,7 +68,7 @@ class HyypClient:
         token: str | None = None,
         userid: int | None = None,
         imei: str | None = None,
-        fcm_credentials = None
+        fcm_credentials = None,
     ) -> None:
         """Initialize the client object."""
         self._email = email
@@ -73,9 +87,8 @@ class HyypClient:
         self.current_status = None   #<<<<<<<<<<<<<<<<<?
         self.tools = ClientTools()
         self.generic_callback_to_hass = None
-        self.current_fcm_thread = None
-    
-        
+        self.thread_lock = thread.Lock()
+     
     def login(self) -> Any:
         """Login to ADT Secure Home API."""
 
@@ -199,13 +212,11 @@ class HyypClient:
         return self.current_status
 
 
-
     def register_generic_callback_to_hass(self, callback):
        self.generic_callback_to_hass = callback
 
     def initialize_fcm_notification_listener(self, restart = False, persistent_pids = None):
         thread.Thread(target=asyncio.run, args=(self.fcm_notification_thread(persistent_ids=persistent_pids, restart=restart),)).start()
-        # asyncio.run(self.fcm_notification_thread(persistent_ids=persistent_pids, restart=restart))
         
     async def fcm_notification_thread(self, restart, persistent_ids):
         #_LOGGER.setLevel(logging.DEBUG)
@@ -213,10 +224,19 @@ class HyypClient:
             time.sleep(2)
         if not restart:
             if not self.tools.internet_connectivity():
+                time.sleep(60)
+                self.request_fcm_restart_from_hass()
                 return
         await self.fcm_laucher(persistent_ids=persistent_ids)
-        
 
+    def request_fcm_restart_from_hass(self):
+        global current_fcm_thread
+        self.thread_lock.acquire()
+        current_fcm_thread = 0
+        self.thread_lock.release()
+        self.generic_callback_to_hass(HASS_CALLBACK_KEY_RESTART_FCM)
+        return
+        
     def send_gcm_to_ids(self):
         retry_count = 0
 
@@ -231,59 +251,65 @@ class HyypClient:
         if not self.tools.internet_connectivity():
             while not self.tools.internet_connectivity():
                 time.sleep(60) 
-            self.generic_callback_to_hass("restart_push_receiver")
+            self.request_fcm_restart_from_hass()
             return
         
         while self.store_gcm_registrationid(gcm_id=gcm_address) == 0:
             time.sleep(10)
             retry_count += 1
             if retry_count >= 2:
-                self.generic_callback_to_hass("restart_push_receiver")
+                self.request_fcm_restart_from_hass()
                 return
        
     async def fcm_laucher(self, persistent_ids):
         
         global current_fcm_thread
+        self.thread_lock.acquire()
         current_fcm_thread = time.time()
+        self.thread_lock.release()
         mythread = current_fcm_thread
         fcm_config = FcmRegisterConfig(project_id=FCM_PROJECT_ID,
                                        app_id=FCM_APP_ID,
                                        api_key=FCM_PUBLIC_APIKEY,
                                        messaging_sender_id=GCF_SENDER_ID,
-                                       persistend_ids=persistent_ids)
+                                       persistend_ids=persistent_ids,)
         fcm_client = FcmPushClient(callback=self.fcm_new_notification_callback,
                                    fcm_config=fcm_config,
                                    credentials=self.fcm_credentials,
-                                   credentials_updated_callback=self.fcm_new_credentials_callback)
+                                   credentials_updated_callback=self.fcm_new_credentials_callback,)
         
         time.sleep(30)
-        
         if not mythread == current_fcm_thread:
             return
-        
         if self.fcm_credentials is not None:
             self.send_gcm_to_ids()
         
         await fcm_client.checkin_or_register()
         await fcm_client.start()
+        time.sleep(5)
         while mythread == current_fcm_thread:
-            await asyncio.sleep(2)         
-        await fcm_client.stop()            
+            if fcm_client.run_state == FcmPushClientRunState.STOPPED or fcm_client.run_state == FcmPushClientRunState.STOPPING:
+                break
+            await asyncio.sleep(5)         
+        await fcm_client.stop()
+        if mythread == current_fcm_thread:
+            self.request_fcm_restart_from_hass()
+            return
  
     def fcm_new_notification_callback(self, obj, persistent_id, message):
         
         if persistent_id:
-            callback_msg = {"new_PID":persistent_id}
+            callback_msg = {HASS_CALLBACK_KEY_NEW_PID:persistent_id}
             self.generic_callback_to_hass(callback_msg)
         if obj:
-            callback_msg = {"fcm_data":obj}
+            callback_msg = {HASS_CALLBACK_KEY_FCM_DATA:obj}
             self.generic_callback_to_hass(callback_msg)
             
 
     def fcm_new_credentials_callback(self, credentials):
         self.fcm_credentials = credentials
         self.send_gcm_to_ids()
-        credentials = {"fcm_credentials":credentials}
+        credentials = {HASS_CALLBACK_KEY_FCM_CREDENTIALS:credentials}
         self.generic_callback_to_hass(credentials)
 
 
@@ -1061,5 +1087,5 @@ class HyypClient:
         
         
     def generate_imei(self):
-        imei = ImeiGenerator().generate_imei(IMEI_SEED)
+        imei = ImeiGenerator().generate_imei()
         return imei
