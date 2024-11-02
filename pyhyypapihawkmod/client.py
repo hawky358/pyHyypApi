@@ -225,9 +225,21 @@ class HyypClient:
         if not restart:
             if not self.tools.internet_connectivity():
                 time.sleep(60)
-                self.request_fcm_restart_from_hass()
+                self.restart_fcm_listener()
                 return
         await self.fcm_laucher(persistent_ids=persistent_ids)
+
+
+
+    def restart_fcm_listener(self):
+        global current_fcm_thread
+        self.thread_lock.acquire()
+        current_fcm_thread = 0
+        self.thread_lock.release()
+        self.initialize_fcm_notification_listener(restart=True)
+        return
+        
+
 
     def request_fcm_restart_from_hass(self):
         global current_fcm_thread
@@ -251,14 +263,14 @@ class HyypClient:
         if not self.tools.internet_connectivity():
             while not self.tools.internet_connectivity():
                 time.sleep(60) 
-            self.request_fcm_restart_from_hass()
+            self.restart_fcm_listener()
             return
         
         while self.store_gcm_registrationid(gcm_id=gcm_address) == 0:
             time.sleep(10)
             retry_count += 1
             if retry_count >= 2:
-                self.request_fcm_restart_from_hass()
+                self.restart_fcm_listener()
                 return
        
     async def fcm_laucher(self, persistent_ids):
@@ -293,11 +305,10 @@ class HyypClient:
             await asyncio.sleep(5)         
         await fcm_client.stop()
         if mythread == current_fcm_thread:
-            self.request_fcm_restart_from_hass()
+            self.restart_fcm_listener()
             return
  
     def fcm_new_notification_callback(self, obj, persistent_id, message):
-        
         if persistent_id:
             callback_msg = {HASS_CALLBACK_KEY_NEW_PID:persistent_id}
             self.generic_callback_to_hass(callback_msg)
@@ -311,6 +322,8 @@ class HyypClient:
         self.send_gcm_to_ids()
         credentials = {HASS_CALLBACK_KEY_FCM_CREDENTIALS:credentials}
         self.generic_callback_to_hass(credentials)
+        time.sleep(10)
+        # self.restart_fcm_listener()
 
 
     def get_debug_infos(self) -> dict[Any, Any]:
