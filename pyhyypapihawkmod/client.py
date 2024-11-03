@@ -52,9 +52,8 @@ API_ENDPOINT_TRIGGER_AUTOMATION = "/device/trigger"
 API_ENDPOINT_GET_ZONE_STATE_INFO = "/device/getZoneStateInfo"
 REQUEST_PUSH_TIMEOUT = 1.5
 
-
-
 current_fcm_thread = None
+generic_callback_to_hass = None
 
 class HyypClient:
     """Initialize api client object."""
@@ -84,10 +83,9 @@ class HyypClient:
         self.forced_refresh = False
         self.alarminfos = HyypAlarmInfos(self)
         self.fcm_credentials = fcm_credentials
-        self.current_status = None   #<<<<<<<<<<<<<<<<<?
         self.tools = ClientTools()
-        self.generic_callback_to_hass = None
         self.thread_lock = thread.Lock()
+        self.persistent_ids = []
      
     def login(self) -> Any:
         """Login to ADT Secure Home API."""
@@ -213,14 +211,15 @@ class HyypClient:
 
 
     def register_generic_callback_to_hass(self, callback):
-       self.generic_callback_to_hass = callback
+       global generic_callback_to_hass
+       generic_callback_to_hass = callback
 
     def initialize_fcm_notification_listener(self, restart = False, persistent_pids = None):
         thread.Thread(target=asyncio.run, args=(self.fcm_notification_thread(persistent_ids=persistent_pids, restart=restart),)).start()
         
     async def fcm_notification_thread(self, restart, persistent_ids):
         #_LOGGER.setLevel(logging.DEBUG)
-        while self.generic_callback_to_hass is None:
+        while generic_callback_to_hass is None:
             time.sleep(2)
         if not restart:
             if not self.tools.internet_connectivity():
@@ -230,28 +229,16 @@ class HyypClient:
         await self.fcm_laucher(persistent_ids=persistent_ids)
 
 
-
     def restart_fcm_listener(self):
         global current_fcm_thread
         self.thread_lock.acquire()
         current_fcm_thread = 0
         self.thread_lock.release()
-        self.initialize_fcm_notification_listener(restart=True)
-        return
-        
-
-
-    def request_fcm_restart_from_hass(self):
-        global current_fcm_thread
-        self.thread_lock.acquire()
-        current_fcm_thread = 0
-        self.thread_lock.release()
-        self.generic_callback_to_hass(HASS_CALLBACK_KEY_RESTART_FCM)
+        self.initialize_fcm_notification_listener(restart=True, persistent_pids=self.persistent_ids)
         return
         
     def send_gcm_to_ids(self):
         retry_count = 0
-
         if self.fcm_credentials is None:
             _LOGGER.warning("No FCM credentials available, disabling notifications")
             return
@@ -289,7 +276,7 @@ class HyypClient:
                                    fcm_config=fcm_config,
                                    credentials=self.fcm_credentials,
                                    credentials_updated_callback=self.fcm_new_credentials_callback,)
-        
+ 
         time.sleep(30)
         if not mythread == current_fcm_thread:
             return
@@ -308,22 +295,22 @@ class HyypClient:
             self.restart_fcm_listener()
             return
  
-    def fcm_new_notification_callback(self, obj, persistent_id, message):
+    def fcm_new_notification_callback(self, obj, persistent_id, message): 
         if persistent_id:
             callback_msg = {HASS_CALLBACK_KEY_NEW_PID:persistent_id}
-            self.generic_callback_to_hass(callback_msg)
+            generic_callback_to_hass(callback_msg)
         if obj:
             callback_msg = {HASS_CALLBACK_KEY_FCM_DATA:obj}
-            self.generic_callback_to_hass(callback_msg)
+            generic_callback_to_hass(callback_msg)
             
 
     def fcm_new_credentials_callback(self, credentials):
         self.fcm_credentials = credentials
-        self.send_gcm_to_ids()
+        # self.send_gcm_to_ids()
         credentials = {HASS_CALLBACK_KEY_FCM_CREDENTIALS:credentials}
-        self.generic_callback_to_hass(credentials)
-        time.sleep(10)
-        # self.restart_fcm_listener()
+        generic_callback_to_hass(credentials)
+        time.sleep(5)
+        self.restart_fcm_listener()
 
 
     def get_debug_infos(self) -> dict[Any, Any]:

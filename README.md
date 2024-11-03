@@ -12,7 +12,7 @@ API for ADT Secure Home and IDS Hyyp. There could be more variants but it's easy
 
 Changelog 
 
-1.5.1b3
+1.5.1b5
 - Various improvements to the error handling of the new FCM system to allow for cleaner reconnects and renewal of credentials.
 
 1.5.1b2
