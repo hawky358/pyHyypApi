@@ -5,23 +5,16 @@ This is a fork from https://github.com/RenierM26. This fork has reversed enginee
 
 # pyHyypApi
 
-**Note** this Api is built to work with the IDS Hyyp integration for home assistant.  No usage instruction is currently provided.
+**Note** this Api is built to work with the IDS Hyyp integration for home assistant (https://github.com/hawky358/hass_ids_hyyp).  No usage instruction is currently provided.
 
 API for ADT Secure Home and IDS Hyyp. There could be more variants but it's easy to add package names to the constants.py file.
 
 
 Changelog 
-
-1.5.1b5
-- Various improvements to the error handling of the new FCM system to allow for cleaner reconnects and renewal of credentials.
-
-1.5.1b2
-- Changed imei generation to increase randomness
-
-1.5.1b1
+1.5.1
 - Reworked FCM system, now using [firebase messaging](https://github.com/sdb9696/firebase-messaging) as the main handler for FCM communication with google.
-
-1.5.0b1
+- Various improvements to the error handling of the new FCM system to allow for cleaner reconnects and renewal of credentials.
+- Changed imei generation to increase randomness
 - Added ability to determine cause for arm failure
 
 1.4.1
